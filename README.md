@@ -43,10 +43,10 @@ gcloud auth list
 ```
 
 ### 3) Install Python Dependencies
-From the project directory:
+From the project directory (and in terminal - python OK):
 
 ```bash
-cd jetstream_api
+cd jetstream
 pip install -r requirements.txt
 ```
 
@@ -61,6 +61,14 @@ python -m uvicorn jetstream_api.main:app --reload
 The application will start on `http://localhost:8000`
 
 ## Troubleshooting
+**Cannot deploy the app:**
+- Check error messages for file or package not found
+- pip install relevant packages (refer to requirements.txt)
+```bash
+pip install uvicorn
+pip install fastapi
+pip install google-cloud-storage
+```
 
 **Cannot connect to GCS:**
 - Verify authentication: `gcloud auth list`
