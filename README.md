@@ -50,7 +50,7 @@ cd jetstream_api
 pip install -r requirements.txt
 ```
 
-## ▶️ Starting the Application
+## Starting the Application
 
 ### Python Command
 ```bash
