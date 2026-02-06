@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uploads - NOAA JetStream</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="header">
+        <div class="header-inner">
+            <img src="/static/jetstream_logo.png" alt="JetStream Logo" class="header-logo">
+            <div class="header-content">
+                <h1>NOAA JetStream</h1>
+                <p>Cloud Data Management System</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="nav-tabs">
+        <button class="nav-tab" onclick="window.location.href='/'">🏠 Home</button>
+        <button class="nav-tab active" onclick="window.location.href='/static/uploads.html'">📤 Uploads</button>
+        <button class="nav-tab" onclick="window.location.href='/static/cloud.html'">☁️ Cloud Transfer</button>
+        <button class="nav-tab" onclick="window.location.href='/static/jobs.html'">📋 Jobs</button>
+        <button class="nav-tab" onclick="window.location.href='/static/analytics.html'">📊 Analytics</button>
+        <button class="nav-tab" onclick="window.location.href='/static/settings.html'">⚙️ Settings</button>
+    </div>
+    
+    <div class="container">
+        <div class="stats-grid" style="margin-top: 20px;">
+            <div class="stat-card">
+                <h3>Total Jobs</h3>
+                <div class="value" id="total-jobs">0</div>
+                <div class="label">All time</div>
+            </div>
+            <div class="stat-card">
+                <h3>Active Jobs</h3>
+                <div class="value" id="active-jobs">0</div>
+                <div class="label">Running now</div>
+            </div>
+            <div class="stat-card">
+                <h3>Data Uploaded</h3>
+                <div class="value" id="data-uploaded">0 GB</div>
+                <div class="label">Total transferred</div>
+            </div>
+            <div class="stat-card">
+                <h3>Queue Length</h3>
+                <div class="value" id="queue-length">0</div>
+                <div class="label">Waiting jobs</div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="panel">
+                <h2>Create Upload Job</h2>
+                <form class="upload-form" id="upload-form">
+                    <div class="form-group">
+                        <label for="source-path">Source Path</label>
+                        <input type="text" id="source-path" placeholder="C:\path\to\folder" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="gcs-destination">GCS Destination</label>
+                        <input type="text" id="gcs-destination" placeholder="nmfs_odp_pifsc/PIFSC/ESD/ARP/data_management" required>
+                        <small style="color: #64748b; display: block; margin-top: 4px;">
+                            Paste full path from GCS console (e.g., nmfs_odp_pifsc/PIFSC/ESD/ARP/data_management)<br>
+                            Quick fill: 
+                            <a href="#" onclick="document.getElementById('gcs-destination').value='nmfs_odp_pifsc/'; document.getElementById('gcs-destination').focus(); return false;" style="color: var(--primary);">PIFSC</a> |
+                            <a href="#" onclick="document.getElementById('gcs-destination').value='nmfs_odp_afsc/'; document.getElementById('gcs-destination').focus(); return false;" style="color: var(--primary);">AFSC</a> |
+                            <a href="#" onclick="document.getElementById('gcs-destination').value='nmfs_odp_swfsc/'; document.getElementById('gcs-destination').focus(); return false;" style="color: var(--primary);">SWFSC</a> |
+                            <a href="#" onclick="document.getElementById('gcs-destination').value='nmfs_odp_nefsc/'; document.getElementById('gcs-destination').focus(); return false;" style="color: var(--primary);">NEFSC</a> |
+                            <a href="#" onclick="document.getElementById('gcs-destination').value='nmfs_odp_nwfsc/'; document.getElementById('gcs-destination').focus(); return false;" style="color: var(--primary);">NWFSC</a>
+                        </small>
+                    </div>
+                    
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="recursive" checked>
+                        <label for="recursive">Recursive (include subfolders)</label>
+                    </div>
+                    
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="split-by-folder">
+                        <label for="split-by-folder">Split by subfolder (separate jobs)</label>
+                    </div>
+                    
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="dry-run">
+                        <label for="dry-run">Dry Run (preview only)</label>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="upload-tool">Upload Tool</label>
+                        <select id="upload-tool" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                            <option value="gcloud" selected>gcloud storage (recommended, faster)</option>
+                            <option value="gsutil">gsutil (legacy)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="schedule-time">Schedule Upload (optional)</label>
+                        <input type="datetime-local" id="schedule-time">
+                        <small style="color: #64748b; display: block; margin-top: 4px;">Leave empty to start immediately</small>
+                    </div>
+                    
+                    <!-- Advanced Options Toggle -->
+                    <div style="margin: 20px 0; padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleAdvancedOptions()">
+                            <h3 style="margin: 0; font-size: 1em; color: #475569;">⚙️ Advanced Filtering Options</h3>
+                            <span id="advanced-toggle" style="color: #64748b;">▼</span>
+                        </div>
+                        
+                        <div id="advanced-options" style="display: none; margin-top: 15px;">
+                            <div class="form-group">
+                                <label for="exclude-folders">Exclude Folders</label>
+                                <input type="text" id="exclude-folders" placeholder="_archive, _YEAR, MISC, DARK, Products">
+                                <small style="color: #64748b; display: block; margin-top: 4px;">
+                                    Comma-separated folder names to skip anywhere in path
+                                </small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="exclude-patterns">Exclude File Patterns</label>
+                                <textarea id="exclude-patterns" rows="3" style="font-family: monospace; font-size: 0.9em;" placeholder="*.tmp&#10;*.bak&#10;Thumbs.db"></textarea>
+                                <small style="color: #64748b; display: block; margin-top: 4px;">
+                                    One pattern per line. Simple patterns (*.tmp) are auto-converted.
+                                </small>
+                            </div>
+                            
+                            <!-- Quick Presets -->
+                            <div style="margin-top: 10px;">
+                                <label style="font-size: 0.85em; color: #64748b;">Quick Presets:</label>
+                                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;">
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="addExcludePreset('temp')" title="Exclude temp files">🗑️ Temp Files</button>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="addExcludePreset('system')" title="Exclude system files">💻 System Files</button>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="addExcludePreset('jpgonly')" title="Only include JPG files">📷 JPG Only</button>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="addExcludePreset('noraw')" title="Exclude RAW camera files">🚫 No RAW</button>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="addExcludePreset('pifsc')" title="PIFSC standard excludes">🐟 PIFSC Standard</button>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="clearExcludePatterns()" title="Clear all patterns">❌ Clear</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Help Section -->
+                            <details style="margin-top: 15px; padding: 10px; background: #f1f5f9; border-radius: 6px;">
+                                <summary style="cursor: pointer; color: #475569; font-weight: 500;">📖 Pattern Help & Examples</summary>
+                                <div style="margin-top: 10px; font-size: 0.85em; color: #64748b;">
+                                    <p><strong>Simple Patterns</strong> (auto-converted to regex):</p>
+                                    <table style="width: 100%; margin: 8px 0; border-collapse: collapse;">
+                                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                                            <td style="padding: 4px;"><code>*.tmp</code></td>
+                                            <td style="padding: 4px;">Files ending in .tmp</td>
+                                        </tr>
+                                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                                            <td style="padding: 4px;"><code>Thumbs.db</code></td>
+                                            <td style="padding: 4px;">Exact filename match</td>
+                                        </tr>
+                                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                                            <td style="padding: 4px;"><code>backup*</code></td>
+                                            <td style="padding: 4px;">Files starting with "backup"</td>
+                                        </tr>
+                                    </table>
+                                    
+                                    <p style="margin-top: 10px;"><strong>Advanced Regex</strong> (passed directly to gsutil/gcloud):</p>
+                                    <table style="width: 100%; margin: 8px 0; border-collapse: collapse;">
+                                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                                            <td style="padding: 4px;"><code>.*\\.txt$|.*\\.bak$</code></td>
+                                            <td style="padding: 4px;">Multiple extensions</td>
+                                        </tr>
+                                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                                            <td style="padding: 4px;"><code>^.*(?&lt;!\\.JPG)$</code></td>
+                                            <td style="padding: 4px;">Everything EXCEPT .JPG</td>
+                                        </tr>
+                                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                                            <td style="padding: 4px;"><code>.*_archive.*|.*MISC.*</code></td>
+                                            <td style="padding: 4px;">Paths containing _archive or MISC</td>
+                                        </tr>
+                                    </table>
+                                    <p style="margin-top: 8px; color: #1e40af;">
+                                        ℹ️ Paths are relative to source folder. Uses <a href="https://docs.python.org/3/howto/regex.html" target="_blank" style="color: #2563eb;">Python regex</a>.
+                                    </p>
+                                </div>
+                            </details>
+                        </div>
+                    </div>
+                    
+                    <button type="button" class="btn btn-secondary" onclick="analyzeFolder()">📊 Analyze Folder</button>
+                    <button type="submit" class="btn btn-primary">🚀 Start Upload</button>
+                </form>
+                
+                <div id="analysis-result" style="margin-top: 20px; display: none;">
+                    <h3>Analysis Results</h3>
+                    <div id="analysis-content"></div>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2>Recent Jobs <span id="uploads-last-updated" class="last-updated"></span></h2>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="clearCompletedJobs()" title="Hide completed, failed, and cancelled jobs from this list">Clear Completed</button>
+                </div>
+                <div class="jobs-list" id="jobs-list">
+                    <p style="text-align: center; color: #999; padding: 50px 0;">No jobs yet. Create your first upload!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/static/js/shared.js"></script>
+    <script src="/static/js/uploads.js"></script>
+</body>
+</html>

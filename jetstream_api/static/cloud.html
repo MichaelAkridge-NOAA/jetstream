@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Transfer - NOAA JetStream</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="header">
+        <div class="header-inner">
+            <img src="/static/jetstream_logo.png" alt="JetStream Logo" class="header-logo">
+            <div class="header-content">
+                <h1>NOAA JetStream</h1>
+                <p>Cloud Data Management System</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="nav-tabs">
+        <button class="nav-tab" onclick="window.location.href='/'">🏠 Home</button>
+        <button class="nav-tab" onclick="window.location.href='/static/uploads.html'">📤 Uploads</button>
+        <button class="nav-tab active" onclick="window.location.href='/static/cloud.html'">☁️ Cloud Transfer</button>
+        <button class="nav-tab" onclick="window.location.href='/static/jobs.html'">📋 Jobs</button>
+        <button class="nav-tab" onclick="window.location.href='/static/analytics.html'">📊 Analytics</button>
+        <button class="nav-tab" onclick="window.location.href='/static/settings.html'">⚙️ Settings</button>
+    </div>
+    
+    <div class="container">
+        <div class="stats-grid" style="margin-top: 20px;">
+            <div class="stat-card">
+                <h3>Total Transfers</h3>
+                <div class="value" id="total-transfers">0</div>
+                <div class="label">All time</div>
+            </div>
+            <div class="stat-card">
+                <h3>Active Transfers</h3>
+                <div class="value" id="active-transfers">0</div>
+                <div class="label">Running now</div>
+            </div>
+            <div class="stat-card">
+                <h3>Completed</h3>
+                <div class="value" id="completed-transfers">0</div>
+                <div class="label">Successful</div>
+            </div>
+            <div class="stat-card">
+                <h3>Failed</h3>
+                <div class="value" id="failed-transfers">0</div>
+                <div class="label">Errors</div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="panel">
+                <h2>Create Cloud Transfer</h2>
+                <p style="color: #64748b; margin-bottom: 20px;">
+                    Sync data between Google Cloud Storage buckets using gcloud storage rsync.
+                </p>
+                
+                <form class="upload-form" id="cloud-transfer-form">
+                    <div class="form-group">
+                        <label for="source-bucket">Source Bucket Path</label>
+                        <input type="text" id="source-bucket" placeholder="nmfs_odp_pifsc/path/to/data" required>
+                        <small style="color: #64748b; display: block; margin-top: 4px;">
+                            Quick fill: 
+                            <a href="#" onclick="document.getElementById('source-bucket').value='nmfs_odp_pifsc/'; document.getElementById('source-bucket').focus(); return false;" style="color: var(--primary);">PIFSC</a> |
+                            <a href="#" onclick="document.getElementById('source-bucket').value='nmfs_odp_afsc/'; document.getElementById('source-bucket').focus(); return false;" style="color: var(--primary);">AFSC</a> |
+                            <a href="#" onclick="document.getElementById('source-bucket').value='nmfs_odp_swfsc/'; document.getElementById('source-bucket').focus(); return false;" style="color: var(--primary);">SWFSC</a> |
+                            <a href="#" onclick="document.getElementById('source-bucket').value='nmfs_odp_nefsc/'; document.getElementById('source-bucket').focus(); return false;" style="color: var(--primary);">NEFSC</a> |
+                            <a href="#" onclick="document.getElementById('source-bucket').value='nmfs_odp_nwfsc/'; document.getElementById('source-bucket').focus(); return false;" style="color: var(--primary);">NWFSC</a>
+                        </small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="dest-bucket">Destination Bucket Path</label>
+                        <input type="text" id="dest-bucket" placeholder="nmfs_odp_afsc/destination/path" required>
+                        <small style="color: #64748b; display: block; margin-top: 4px;">
+                            Quick fill: 
+                            <a href="#" onclick="document.getElementById('dest-bucket').value='nmfs_odp_pifsc/'; document.getElementById('dest-bucket').focus(); return false;" style="color: var(--primary);">PIFSC</a> |
+                            <a href="#" onclick="document.getElementById('dest-bucket').value='nmfs_odp_afsc/'; document.getElementById('dest-bucket').focus(); return false;" style="color: var(--primary);">AFSC</a> |
+                            <a href="#" onclick="document.getElementById('dest-bucket').value='nmfs_odp_swfsc/'; document.getElementById('dest-bucket').focus(); return false;" style="color: var(--primary);">SWFSC</a> |
+                            <a href="#" onclick="document.getElementById('dest-bucket').value='nmfs_odp_nefsc/'; document.getElementById('dest-bucket').focus(); return false;" style="color: var(--primary);">NEFSC</a> |
+                            <a href="#" onclick="document.getElementById('dest-bucket').value='nmfs_odp_nwfsc/'; document.getElementById('dest-bucket').focus(); return false;" style="color: var(--primary);">NWFSC</a>
+                        </small>
+                    </div>
+                    
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="recursive" checked>
+                        <label for="recursive">Recursive (include subfolders)</label>
+                    </div>
+                    
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="dry-run" checked>
+                        <label for="dry-run">Dry Run (preview only - recommended first)</label>
+                    </div>
+                    
+                    <!-- Advanced Options Toggle -->
+                    <div style="margin: 20px 0; padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleAdvancedOptions()">
+                            <h3 style="margin: 0; font-size: 1em; color: #475569;">⚙️ Advanced Filtering Options</h3>
+                            <span id="advanced-toggle" style="color: #64748b;">▼</span>
+                        </div>
+                        
+                        <div id="advanced-options" style="display: none; margin-top: 15px;">
+                            <div class="form-group">
+                                <label for="exclude-patterns">Exclude Patterns (one per line)</label>
+                                <textarea id="exclude-patterns" rows="3" style="font-family: monospace; font-size: 0.9em;" placeholder="*.tmp&#10;*.bak&#10;*.log"></textarea>
+                                <small style="color: #64748b; display: block; margin-top: 4px;">
+                                    Patterns to exclude. Use wildcards: *.tmp, *.bak
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 15px; padding: 12px; background: #dbeafe; border: 1px solid #93c5fd; border-radius: 6px;">
+                        <p style="color: #1e40af; font-size: 0.85em; margin: 0;">
+                            💡 <strong>Tip:</strong> Always test with dry run first to preview what will be transferred.
+                        </p>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" style="margin-top: 20px;">🚀 Start Cloud Transfer</button>
+                </form>
+            </div>
+            
+            <div class="panel">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2>Recent Transfers <span id="transfers-last-updated" class="last-updated"></span></h2>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="clearCompletedTransfers()" title="Clear completed transfers">Clear Completed</button>
+                </div>
+                <div class="jobs-list" id="cloud-jobs-list">
+                    <p style="text-align: center; color: #999; padding: 50px 0;">Loading transfers...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/static/js/shared.js"></script>
+    <script src="/static/js/cloud.js"></script>
+</body>
+</html>

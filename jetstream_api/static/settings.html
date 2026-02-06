@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - NOAA JetStream</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="header">
+        <div class="header-inner">
+            <img src="/static/jetstream_logo.png" alt="JetStream Logo" class="header-logo">
+            <div class="header-content">
+                <h1>NOAA JetStream</h1>
+                <p>Cloud Data Management System</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="nav-tabs">
+        <button class="nav-tab" onclick="window.location.href='/'">🏠 Home</button>
+        <button class="nav-tab" onclick="window.location.href='/static/uploads.html'">📤 Uploads</button>
+        <button class="nav-tab" onclick="window.location.href='/static/cloud.html'">☁️ Cloud Transfer</button>
+        <button class="nav-tab" onclick="window.location.href='/static/jobs.html'">📋 Jobs</button>
+        <button class="nav-tab" onclick="window.location.href='/static/analytics.html'">📊 Analytics</button>
+        <button class="nav-tab active" onclick="window.location.href='/static/settings.html'">⚙️ Settings</button>
+    </div>
+    
+    <div class="container">
+        <div class="panel" style="margin-top: 30px;">
+            <h2>⚙️ Application Settings</h2>
+            <p style="color: #64748b; margin-bottom: 20px;">Configure authentication, application preferences, and UI settings</p>
+            
+            <!-- Settings Sub-Tabs -->
+            <div style="display: flex; gap: 10px; border-bottom: 2px solid #e2e8f0; margin-bottom: 25px;">
+                <button class="settings-subtab active" id="auth-subtab" onclick="switchSettingsTab('auth')">
+                    🔐 Authentication
+                </button>
+                <button class="settings-subtab" id="filters-subtab" onclick="switchSettingsTab('filters')">
+                    🔍 File Filters
+                </button>
+                <button class="settings-subtab" id="ui-subtab" onclick="switchSettingsTab('ui')">
+                    🎨 UI Preferences
+                </button>
+            </div>
+            
+            <!-- Authentication Tab -->
+            <div id="auth-tab" class="settings-tab-content active">
+                <div id="auth-status" style="padding: 15px; border-radius: 8px; margin-bottom: 20px; background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <h3 style="margin-top: 0;">🔐 Google Cloud Authentication</h3>
+                    <div id="auth-status-content">Checking authentication status...</div>
+                </div>
+                
+                <div style="padding: 20px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                    <h3 style="margin-top: 0; color: #1e40af;">📝 Setup Instructions</h3>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #1e40af; margin-bottom: 8px;">Option 1: User Authentication (Recommended)</h4>
+                        <p style="color: #64748b; font-size: 0.9em; margin-bottom: 10px;">
+                            Authenticate using your Google Cloud account:
+                        </p>
+                        <div style="background: #1e293b; color: #e2e8f0; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 0.9em; margin-bottom: 10px;">
+                            gcloud auth application-default login
+                        </div>
+                        <p style="color: #64748b; font-size: 0.85em; margin-top: 8px;">
+                            ✓ Simplest method - uses your Google account<br>
+                            ✓ No service account keys needed<br>
+                            ✓ Works on your local machine
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <h4 style="color: #1e40af; margin-bottom: 8px;">Option 2: Service Account (Production)</h4>
+                        <p style="color: #64748b; font-size: 0.9em; margin-bottom: 10px;">
+                            Set environment variable with service account JSON:
+                        </p>
+                        <div style="background: #1e293b; color: #e2e8f0; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 0.85em; margin-bottom: 10px;">
+                            # PowerShell<br>
+                            $env:GOOGLE_APPLICATION_CREDENTIALS="C:\path\to\service-account.json"
+                        </div>
+                        <p style="color: #64748b; font-size: 0.85em; margin-top: 8px;">
+                            Download service account key from <a href="https://console.cloud.google.com/iam-admin/serviceaccounts" target="_blank" style="color: #3b82f6;">Google Cloud Console</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- File Filters Tab -->
+            <div id="filters-tab" class="settings-tab-content">
+                <h3>Default File Filters</h3>
+                <p style="color: #64748b; margin-bottom: 20px;">Configure default file filter patterns for uploads</p>
+                
+                <div class="form-group">
+                    <label for="setting-exclude-folders">Exclude Folders</label>
+                    <input type="text" id="setting-exclude-folders" placeholder="__pycache__, .git, node_modules">
+                    <small style="color: #64748b; display: block; margin-top: 4px;">Comma-separated folder names to skip</small>
+                </div>
+                
+                <div class="form-group" style="margin-top: 15px;">
+                    <label for="setting-include-patterns">Include Patterns (one per line)</label>
+                    <textarea id="setting-include-patterns" rows="4" style="font-family: monospace; font-size: 0.9em; width: 100%; max-width: 600px; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px;" placeholder="^.*\.(jpg|jpeg|png|tiff|tif)$&#10;^.*\.(mp4|mov|avi)$"></textarea>
+                </div>
+                
+                <div class="form-group" style="margin-top: 15px;">
+                    <label for="setting-exclude-patterns">Exclude Patterns (one per line)</label>
+                    <textarea id="setting-exclude-patterns" rows="4" style="font-family: monospace; font-size: 0.9em; width: 100%; max-width: 600px; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px;" placeholder=".*\.tmp$&#10;.*\.bak$&#10;.*~$"></textarea>
+                </div>
+                
+                <div style="margin-top: 20px; display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="saveFilterConfig()">💾 Save Filters</button>
+                    <button class="btn btn-secondary" onclick="resetFiltersToDefault()">🔄 Reset to Defaults</button>
+                </div>
+            </div>
+            
+            <!-- UI Preferences Tab -->
+            <div id="ui-tab" class="settings-tab-content">
+                <h3>UI Preferences</h3>
+                <p style="color: #64748b; margin-bottom: 20px;">Customize the interface appearance and behavior</p>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 600px;">
+                    <div class="form-group">
+                        <label for="setting-theme">Theme</label>
+                        <select id="setting-theme">
+                            <option value="light">☀️ Light</option>
+                            <option value="dark">🌙 Dark</option>
+                            <option value="auto">🔄 Auto (System)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="setting-refresh-interval">Refresh Interval (seconds)</label>
+                        <input type="number" id="setting-refresh-interval" value="5" min="1" max="60">
+                    </div>
+                </div>
+                
+                <div class="checkbox-group" style="margin-top: 15px;">
+                    <input type="checkbox" id="setting-notifications" checked>
+                    <label for="setting-notifications">Show notifications</label>
+                </div>
+                
+                <div class="checkbox-group" style="margin-top: 10px;">
+                    <input type="checkbox" id="setting-confirm-delete" checked>
+                    <label for="setting-confirm-delete">Confirm before delete</label>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="saveUIPreferences()">💾 Save UI Preferences</button>
+                </div>
+            </div>
+            
+            <div style="margin-top: 30px;">
+                <button class="btn btn-secondary" onclick="loadSettings()">
+                    🔄 Refresh Settings
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/static/js/shared.js"></script>
+    <script src="/static/js/settings.js"></script>
+</body>
+</html>

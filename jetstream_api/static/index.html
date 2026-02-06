@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOAA JetStream - Home</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="header">
+        <div class="header-inner">
+            <img src="/static/jetstream_logo.png" alt="JetStream Logo" class="header-logo">
+            <div class="header-content">
+                <h1>NOAA JetStream</h1>
+                <p>Cloud Data Management System</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="nav-tabs">
+        <button class="nav-tab active" onclick="window.location.href='/'">🏠 Home</button>
+        <button class="nav-tab" onclick="window.location.href='/static/uploads.html'">📤 Uploads</button>
+        <button class="nav-tab" onclick="window.location.href='/static/cloud.html'">☁️ Cloud Transfer</button>
+        <button class="nav-tab" onclick="window.location.href='/static/jobs.html'">📋 Jobs</button>
+        <button class="nav-tab" onclick="window.location.href='/static/analytics.html'">📊 Analytics</button>
+        <button class="nav-tab" onclick="window.location.href='/static/settings.html'">⚙️ Settings</button>
+    </div>
+    
+    <div class="container">
+        <!-- Welcome Section -->
+        <div class="panel" style="text-align: center; padding: 48px 32px; background: var(--bg-primary); border: 2px solid var(--primary); margin-top: 10px;">
+            <h1 style="font-size: 2rem; margin-bottom: 12px; color: var(--text-primary); font-weight: 700;">Welcome to NOAA JetStream</h1>
+            <p style="font-size: 1.125rem; color: var(--text-secondary); max-width: 600px; margin: 0 auto;">
+                Cloud data management platform for Google Cloud Storage operations, analytics, and workflow management.
+            </p>
+        </div>
+        
+        <!-- Two Column Layout: Quick Actions + Resources -->
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px; margin-top: 30px;">
+            
+            <!-- Left Column: Quick Actions -->
+            <div>
+                <h2 style="margin-bottom: 20px; color: #1e293b;">Quick Actions</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="stat-card" style="cursor: pointer; transition: transform 0.2s;" onclick="window.location.href='/static/uploads.html'" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📤</div>
+                        <h3>Upload Data</h3>
+                        <p style="color: #64748b; font-size: 0.9em; margin-top: 8px;">
+                            Transfer local folders to Google Cloud Storage
+                        </p>
+                    </div>
+                    
+                    <div class="stat-card" style="cursor: pointer; transition: transform 0.2s;" onclick="window.location.href='/static/jobs.html'" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
+                        <h3>Job Dashboard</h3>
+                        <p style="color: #64748b; font-size: 0.9em; margin-top: 8px;">
+                            Monitor and manage all upload jobs
+                        </p>
+                    </div>
+                    
+                    <div class="stat-card" style="cursor: pointer; transition: transform 0.2s;" onclick="window.location.href='/static/analytics.html'" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📊</div>
+                        <h3>Analytics</h3>
+                        <p style="color: #64748b; font-size: 0.9em; margin-top: 8px;">
+                            View trends and storage statistics
+                        </p>
+                    </div>
+                    
+                    <div class="stat-card" style="cursor: pointer; transition: transform 0.2s;" onclick="window.location.href='/docs'" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📚</div>
+                        <h3>API Documentation</h3>
+                        <p style="color: #64748b; font-size: 0.9em; margin-top: 8px;">
+                            Interactive REST API reference
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Current Stats -->
+                <div style="margin-top: 30px;">
+                    <h2 style="margin-bottom: 20px; color: #1e293b;">System Status <span id="home-last-updated" class="last-updated"></span></h2>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3>Total Jobs</h3>
+                            <div class="value" id="total-jobs">0</div>
+                            <div class="label">All time</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Active Jobs</h3>
+                            <div class="value" id="active-jobs">0</div>
+                            <div class="label">Running now</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Data Uploaded</h3>
+                            <div class="value" id="data-uploaded">0 GB</div>
+                            <div class="label">Total transferred</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Queue Length</h3>
+                            <div class="value" id="queue-length">0</div>
+                            <div class="label">Waiting jobs</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Column: Resources -->
+            <div class="panel" style="background: linear-gradient(135deg, rgba(14, 165, 233, 0.03) 0%, rgba(139, 92, 246, 0.03) 100%); border: 2px solid var(--border);">
+                <h2 style="margin-bottom: 24px; display: flex; align-items: center; gap: 12px; font-size: 1.25rem;">📚 Resources</h2>
+                
+                <!-- NOAA ODP Buckets -->
+                <div style="background: var(--bg-card); padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--border); margin-bottom: 20px;">
+                    <h3 style="color: var(--primary); font-size: 1em; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">🪣 NOAA Cloud Data Buckets</h3>
+                    <ul style="color: #64748b; font-size: 0.85em; list-style: none; padding: 0; display: flex; flex-direction: column; gap: 6px;">
+                        <li style="padding: 6px 10px; background: rgba(14, 165, 233, 0.05); border-radius: 6px;">• <a href="https://console.cloud.google.com/storage/browser/nmfs_odp_pifsc" target="_blank" style="color: var(--primary); font-weight: 600; text-decoration: none;">PIFSC</a></li>
+                        <li style="padding: 6px 10px; background: rgba(14, 165, 233, 0.05); border-radius: 6px;">• <a href="https://console.cloud.google.com/storage/browser/nmfs_odp_afsc" target="_blank" style="color: var(--primary); font-weight: 600; text-decoration: none;">AFSC</a></li>
+                        <li style="padding: 6px 10px; background: rgba(14, 165, 233, 0.05); border-radius: 6px;">• <a href="https://console.cloud.google.com/storage/browser/nmfs_odp_swfsc" target="_blank" style="color: var(--primary); font-weight: 600; text-decoration: none;">SWFSC</a></li>
+                        <li style="padding: 6px 10px; background: rgba(14, 165, 233, 0.05); border-radius: 6px;">• <a href="https://console.cloud.google.com/storage/browser/nmfs_odp_nefsc" target="_blank" style="color: var(--primary); font-weight: 600; text-decoration: none;">NEFSC</a></li>
+                        <li style="padding: 6px 10px; background: rgba(14, 165, 233, 0.05); border-radius: 6px;">• <a href="https://console.cloud.google.com/storage/browser/nmfs_odp_nwfsc" target="_blank" style="color: var(--primary); font-weight: 600; text-decoration: none;">NWFSC</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Links -->
+                <div style="background: var(--bg-card); padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--border); margin-bottom: 20px;">
+                    <h3 style="color: var(--primary); font-size: 1em; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">🔗 Quick Links</h3>
+                    <ul style="color: #64748b; font-size: 0.85em; list-style: none; padding: 0; display: flex; flex-direction: column; gap: 6px;">
+                        <li style="padding: 6px 10px; background: rgba(139, 92, 246, 0.05); border-radius: 6px;">• <a href="https://console.cloud.google.com" target="_blank" style="color: var(--accent); font-weight: 600; text-decoration: none;">Google Cloud Console</a></li>
+                        <li style="padding: 6px 10px; background: rgba(139, 92, 246, 0.05); border-radius: 6px;">• <a href="/docs" style="color: var(--accent); font-weight: 600; text-decoration: none;">API Documentation</a></li>
+                        <li style="padding: 6px 10px; background: rgba(139, 92, 246, 0.05); border-radius: 6px;">• <a href="/static/settings.html" style="color: var(--accent); font-weight: 600; text-decoration: none;">Application Settings</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Getting Started -->
+                <div style="background: var(--bg-card); padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--border);">
+                    <h3 style="color: var(--primary); font-size: 1em; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">🚀 Quick Start</h3>
+                    <p style="color: #64748b; font-size: 0.85rem; line-height: 1.6;">
+                        <strong style="color: var(--primary);">1.</strong> Authenticate with Google Cloud<br>
+                        <strong style="color: var(--primary);">2.</strong> Create an upload job<br>
+                        <strong style="color: var(--primary);">3.</strong> Monitor progress<br>
+                        <strong style="color: var(--primary);">4.</strong> View analytics
+                    </p>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+    
+    <script src="/static/js/shared.js"></script>
+    <script src="/static/js/home.js"></script>
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - NOAA JetStream</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="header">
+        <div class="header-inner">
+            <img src="/static/jetstream_logo.png" alt="JetStream Logo" class="header-logo">
+            <div class="header-content">
+                <h1>NOAA JetStream</h1>
+                <p>Cloud Data Management System</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="nav-tabs">
+        <button class="nav-tab" onclick="window.location.href='/'">🏠 Home</button>
+        <button class="nav-tab" onclick="window.location.href='/static/uploads.html'">📤 Uploads</button>
+        <button class="nav-tab" onclick="window.location.href='/static/cloud.html'">☁️ Cloud Transfer</button>
+        <button class="nav-tab" onclick="window.location.href='/static/jobs.html'">📋 Jobs</button>
+        <button class="nav-tab active" onclick="window.location.href='/static/analytics.html'">📊 Analytics</button>
+        <button class="nav-tab" onclick="window.location.href='/static/settings.html'">⚙️ Settings</button>
+    </div>
+    
+    <div class="container">
+        <h1 style="margin: 30px 0 20px 0;">📊 Analytics Dashboard</h1>
+        
+        <!-- Analytics Tabs -->
+        <div style="margin-bottom: 30px; display: flex; gap: 10px; border-bottom: 2px solid #e2e8f0;">
+            <button class="analytics-tab active" id="upload-tab" onclick="switchAnalyticsTab('upload')" style="padding: 12px 24px; background: none; border: none; border-bottom: 3px solid #3182ce; color: #3182ce; font-weight: 600; cursor: pointer;">
+                Upload Analytics
+            </button>
+            <button class="analytics-tab" id="cloud-tab" onclick="switchAnalyticsTab('cloud')" style="padding: 12px 24px; background: none; border: none; border-bottom: 3px solid transparent; color: #64748b; font-weight: 600; cursor: pointer;">
+                Cloud Storage Analyzer
+            </button>
+        </div>
+        
+        <!-- Upload Analytics Section -->
+        <div id="upload-section" class="analytics-section">
+            <div class="stats-grid" style="margin-bottom: 30px;">
+                <div class="stat-card">
+                    <h3>Success Rate</h3>
+                    <p class="stat-value" id="analytics-success-rate">-</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Avg Speed</h3>
+                    <p class="stat-value" id="analytics-avg-speed">-</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Transferred</h3>
+                    <p class="stat-value" id="analytics-total-data">-</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Completed Jobs</h3>
+                    <p class="stat-value" id="analytics-completed">-</p>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 20px;">
+                <div class="panel">
+                    <h2>Upload Trends (Last 30 Days)</h2>
+                    <canvas id="trendsChart"></canvas>
+                </div>
+                
+                <div class="panel">
+                    <h2>Job Status Distribution</h2>
+                    <canvas id="statusChart"></canvas>
+                </div>
+                
+                <div class="panel">
+                    <h2>Top Source Paths</h2>
+                    <canvas id="sourcesChart"></canvas>
+                </div>
+                
+                <div class="panel">
+                    <h2>Job Type Breakdown</h2>
+                    <canvas id="jobTypesChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Cloud Storage Analyzer Section -->
+        <div id="cloud-section" class="analytics-section" style="display: none;">
+            <div class="panel">
+                <h2>Analyze GCS Bucket</h2>
+                <p style="color: #64748b; margin-bottom: 20px;">
+                    Analyze Google Cloud Storage buckets to get folder statistics, file counts, and size information.
+                </p>
+                
+                <div class="form-group">
+                    <label for="cloud-bucket-name">Bucket Name</label>
+                    <input type="text" id="cloud-bucket-name" placeholder="nmfs_odp_pifsc" required>
+                    <small style="color: #64748b; display: block; margin-top: 4px;">
+                        Quick fill: 
+                        <a href="#" onclick="document.getElementById('cloud-bucket-name').value='nmfs_odp_pifsc'; return false;" style="color: var(--primary);">PIFSC</a> |
+                        <a href="#" onclick="document.getElementById('cloud-bucket-name').value='nmfs_odp_afsc'; return false;" style="color: var(--primary);">AFSC</a> |
+                        <a href="#" onclick="document.getElementById('cloud-bucket-name').value='nmfs_odp_swfsc'; return false;" style="color: var(--primary);">SWFSC</a> |
+                        <a href="#" onclick="document.getElementById('cloud-bucket-name').value='nmfs_odp_nefsc'; return false;" style="color: var(--primary);">NEFSC</a> |
+                        <a href="#" onclick="document.getElementById('cloud-bucket-name').value='nmfs_odp_nwfsc'; return false;" style="color: var(--primary);">NWFSC</a>
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="cloud-prefix">Folder Prefix (optional)</label>
+                    <input type="text" id="cloud-prefix" placeholder="path/to/folder/">
+                    <small style="color: #64748b; display: block; margin-top: 4px;">Leave empty to analyze entire bucket</small>
+                </div>
+                
+                <button class="btn btn-primary" onclick="analyzeCloudBucket()" id="analyze-cloud-btn">
+                    🔍 Analyze Bucket
+                </button>
+                <button class="btn btn-secondary" onclick="getQuickSummary()" style="margin-left: 10px;">
+                    ⚡ Quick Summary
+                </button>
+            </div>
+            
+            <!-- Cloud Analysis Results -->
+            <div id="cloud-analysis-results" style="display: none; margin-top: 20px;">
+                <div class="panel">
+                    <h2>Analysis Results</h2>
+                    <div id="cloud-analysis-content"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/static/js/shared.js"></script>
+    <script src="/static/js/analytics.js"></script>
+</body>
+</html>
