@@ -3,7 +3,7 @@
 
 A comprehensive web-based application for managing Google Cloud Storage uploads with features including job queuing, real-time analytics, cloud bucket analysis, and batch processing capabilities.
 
-## Features
+### Features
 
 - **Upload Management**
 - **Analytics & Monitoring**
