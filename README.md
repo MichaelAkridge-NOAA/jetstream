@@ -43,10 +43,9 @@ gcloud auth list
 ```
 
 ### 3) Install Python Dependencies
-From the project directory:
+From the jetstream project directory:
 
 ```bash
-cd jetstream_api
 pip install -r requirements.txt
 ```
 
@@ -55,10 +54,8 @@ pip install -r requirements.txt
 ### Python Command
 ```bash
 python -m uvicorn jetstream_api.main:app --reload
-#python -m uvicorn jetstream_api.main:app --reload --host 0.0.0.0 --port 8000
 ```
-
-The application will start on `http://localhost:8000`
+## The application will start on `http://localhost:8000`
 
 ## Troubleshooting
 
