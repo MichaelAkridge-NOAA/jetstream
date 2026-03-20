@@ -6,6 +6,17 @@ JetStream Diagnostic Script
 import sys
 import os
 from pathlib import Path
+import platform
+
+# Fix Windows console encoding for Unicode support
+if sys.platform == 'win32':
+    try:
+        import codecs
+        sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+        sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
+        os.environ['PYTHONIOENCODING'] = 'utf-8'
+    except:
+        pass  # If encoding fix fails, continue anyway
 
 def print_header(title):
     """Print a section header."""
@@ -224,7 +235,8 @@ def main():
     """Run all diagnostic checks."""
     print("\n" + "="*60)
     print("  JetStream Diagnostic Tool")
-    print("  Platform:", sys.platform)
+    print("  Platform:", sys.platform, f"({platform.machine()})")
+    print("  Architecture:", platform.architecture()[0])
     print("  Working Directory:", os.getcwd())
     print("="*60)
     
