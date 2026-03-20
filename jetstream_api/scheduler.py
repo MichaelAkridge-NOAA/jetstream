@@ -23,7 +23,7 @@ class UploadScheduler:
             
         self.running = True
         self.task = asyncio.create_task(self._scheduler_loop())
-        logger.info("✓ Upload scheduler started")
+        logger.info("[OK] Upload scheduler started")
         
     async def stop(self):
         """Stop the scheduler background task."""
@@ -34,7 +34,7 @@ class UploadScheduler:
                 await self.task
             except asyncio.CancelledError:
                 pass
-        logger.info("✓ Upload scheduler stopped")
+        logger.info("[OK] Upload scheduler stopped")
         
     async def _scheduler_loop(self):
         """Main scheduler loop - checks for scheduled jobs every minute."""

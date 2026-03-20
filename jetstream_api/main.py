@@ -4,6 +4,21 @@ A comprehensive tool for managing local-to-cloud uploads with queue management,
 statistics, and folder analysis.
 """
 
+import sys
+import os
+
+# Fix Windows console encoding for Unicode support (for emoji/symbols in logs)
+if sys.platform == 'win32':
+    try:
+        import codecs
+        if hasattr(sys.stdout, 'buffer'):
+            sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+        if hasattr(sys.stderr, 'buffer'):
+            sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
+        os.environ.setdefault('PYTHONIOENCODING', 'utf-8')
+    except:
+        pass  # If encoding fix fails, ASCII symbols will be used
+
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse
@@ -20,33 +35,62 @@ from .database import init_db, close_db
 from .config import settings
 from .scheduler import scheduler
 
+# Configure logging to be very verbose
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
+
+# Log import success
+logger.info("=" * 70)
+logger.info("JetStream imports completed successfully")
+logger.info("=" * 70)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager - startup and shutdown events."""
     # Startup
     try:
-        logger.info("🚀 Starting NOAA JetStream...")
+        logger.info("=" * 70)
+        logger.info(">> Starting NOAA JetStream...")
         logger.info(f"   Platform: {os.name} | Python: {os.sys.version.split()[0]}")
+        logger.info(f"   Working Directory: {os.getcwd()}")
+        logger.info(f"   Database Path: {os.path.abspath('jetstream.db')}")
+        logger.info("=" * 70)
         
+        logger.info("[1/3] Initializing database...")
         init_db()
-        logger.info("✓ Database initialized")
+        logger.info("[OK] Database initialized")
         
+        logger.info("[2/3] Starting scheduler...")
         await scheduler.start()
+        logger.info("[OK] Scheduler started")
         
+        logger.info("[3/3] Preparing browser auto-launch...")
         # Open browser after startup (only in main worker process)
         if settings.AUTO_OPEN_BROWSER and os.environ.get("BROWSER_OPENED") != "true":
             os.environ["BROWSER_OPENED"] = "true"
             asyncio.create_task(open_browser())
         
-        logger.info(f"✓ Server ready at http://localhost:{settings.PORT}")
+        logger.info("=" * 70)
+        logger.info(f"[OK] Server ready at http://localhost:{settings.PORT}")
         logger.info(f"   Access the dashboard at: http://localhost:{settings.PORT}")
+        logger.info("=" * 70)
         
     except Exception as e:
-        logger.error(f"❌ Startup failed: {type(e).__name__}: {e}")
-        logger.error("   Run diagnostics: python diagnose.py")
-        raise
+        logger.error("=" * 70)
+        logger.error(f"[ERROR] STARTUP FAILED: {type(e).__name__}: {e}")
+        logger.error("=" * 70)
+        logger.exception("Full error traceback:")
+        logger.error("=" * 70)
+        logger.error("   Troubleshooting:")
+        logger.error("   1. Run diagnostics: python diagnose.py")
+        logger.error("   2. Check write permissions in current directory")
+        logger.error("   3. See TROUBLESHOOTING.md for more help")
+        logger.error("=" * 70)
+        # Re-raise to ensure uvicorn shows the error
+        raise RuntimeError(f"JetStream startup failed: {e}") from e
     
     yield
     
@@ -55,7 +99,7 @@ async def lifespan(app: FastAPI):
         logger.info("Shutting down...")
         await scheduler.stop()
         close_db()
-        logger.info("✓ Shutdown complete")
+        logger.info("[OK] Shutdown complete")
     except Exception as e:
         logger.error(f"Error during shutdown: {e}")
 
@@ -64,7 +108,7 @@ async def open_browser():
     await asyncio.sleep(2)  # Wait for server to be fully ready
     url = f"http://localhost:{settings.PORT}"
     try:
-        logger.info(f"🌐 Opening browser to {url}")
+        logger.info(f"[BROWSER] Opening browser to {url}")
         webbrowser.open(url)
     except Exception as e:
         logger.warning(f"Could not auto-open browser: {e}")
