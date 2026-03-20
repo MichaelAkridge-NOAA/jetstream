@@ -40,6 +40,16 @@ def main():
     logger.info(f"Python Version: {sys.version}")
     logger.info(f"Platform: {sys.platform} ({platform.machine()}, {platform.architecture()[0]})")
     
+    # Verify we're in the right directory
+    if not os.path.exists('jetstream_api'):
+        logger.error("ERROR: 'jetstream_api' folder not found!")
+        logger.error("You must run this from the jetstream project directory.")
+        logger.error(f"Current directory: {os.getcwd()}")
+        logger.error("\nExample:")
+        logger.error("  cd C:\\Users\\YourName\\jetstream")
+        logger.error("  python start.py")
+        return 1
+    
     # Step 2: Test imports one by one
     print("\n[1/6] Testing core imports...")
     try:

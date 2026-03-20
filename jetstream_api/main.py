@@ -57,6 +57,16 @@ async def lifespan(app: FastAPI):
         logger.info(f"   Platform: {os.name} | Python: {os.sys.version.split()[0]}")
         logger.info(f"   Working Directory: {os.getcwd()}")
         logger.info(f"   Database Path: {os.path.abspath('jetstream.db')}")
+        
+        # Verify we're in the right directory
+        if not os.path.exists('jetstream_api'):
+            logger.error("=" * 70)
+            logger.error("[ERROR] 'jetstream_api' folder not found!")
+            logger.error("You must run this from the jetstream project directory.")
+            logger.error(f"Current directory: {os.getcwd()}")
+            logger.error("=" * 70)
+            raise RuntimeError("Wrong working directory - run from jetstream folder")
+        
         logger.info("=" * 70)
         
         logger.info("[1/3] Initializing database...")
