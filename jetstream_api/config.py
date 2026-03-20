@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     DEBUG: bool = False
+    AUTO_OPEN_BROWSER: bool = True  # Auto-open browser on startup
     
     # Database
     DATABASE_URL: str = "sqlite:///./jetstream.db"

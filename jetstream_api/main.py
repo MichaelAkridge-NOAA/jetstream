@@ -10,22 +10,65 @@ from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import uvicorn
+import webbrowser
+import asyncio
+import os
+import logging
 
 from .routers import uploads, stats, queue, folders, analytics, cloud_analyzer, settings as settings_router
 from .database import init_db, close_db
 from .config import settings
 from .scheduler import scheduler
 
+logger = logging.getLogger(__name__)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager - startup and shutdown events."""
     # Startup
-    init_db()
-    await scheduler.start()
+    try:
+        logger.info("🚀 Starting NOAA JetStream...")
+        logger.info(f"   Platform: {os.name} | Python: {os.sys.version.split()[0]}")
+        
+        init_db()
+        logger.info("✓ Database initialized")
+        
+        await scheduler.start()
+        
+        # Open browser after startup (only in main worker process)
+        if settings.AUTO_OPEN_BROWSER and os.environ.get("BROWSER_OPENED") != "true":
+            os.environ["BROWSER_OPENED"] = "true"
+            asyncio.create_task(open_browser())
+        
+        logger.info(f"✓ Server ready at http://localhost:{settings.PORT}")
+        logger.info(f"   Access the dashboard at: http://localhost:{settings.PORT}")
+        
+    except Exception as e:
+        logger.error(f"❌ Startup failed: {type(e).__name__}: {e}")
+        logger.error("   Run diagnostics: python diagnose.py")
+        raise
+    
     yield
+    
     # Shutdown
-    await scheduler.stop()
-    close_db()
+    try:
+        logger.info("Shutting down...")
+        await scheduler.stop()
+        close_db()
+        logger.info("✓ Shutdown complete")
+    except Exception as e:
+        logger.error(f"Error during shutdown: {e}")
+
+async def open_browser():
+    """Open the default browser after a short delay."""
+    await asyncio.sleep(2)  # Wait for server to be fully ready
+    url = f"http://localhost:{settings.PORT}"
+    try:
+        logger.info(f"🌐 Opening browser to {url}")
+        webbrowser.open(url)
+    except Exception as e:
+        logger.warning(f"Could not auto-open browser: {e}")
+        logger.info(f"   Please manually navigate to: {url}")
 
 # Create FastAPI app
 app = FastAPI(

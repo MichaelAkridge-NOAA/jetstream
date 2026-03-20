@@ -51,11 +51,30 @@ pip install -r requirements.txt
 
 ## Starting the Application
 
-### Python Command
+### Quick Start
 ```bash
 python -m uvicorn jetstream_api.main:app --reload
+# or on Linux/macOS:
+python3 -m uvicorn jetstream_api.main:app --reload
 ```
-## The application will start on `http://localhost:8000`
+
+The application will start on **http://localhost:8000** and automatically open in your default browser.
+
+**To disable auto-browser opening:** Set environment variable `AUTO_OPEN_BROWSER=false` or add to `.env` file.
+
+### Troubleshooting Startup Issues
+
+**If the server appears to start but you can't connect:**
+
+1. **Run diagnostics:**
+   ```bash
+   python diagnose.py
+   ```
+   
+2. **Run with debug logging:**
+   ```bash
+   python -m uvicorn jetstream_api.main:app --reload --log-level debug
+   ```
 
 ## Troubleshooting
 
