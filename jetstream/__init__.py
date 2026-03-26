@@ -4,7 +4,7 @@ A comprehensive tool for managing local-to-cloud uploads with queue management,
 statistics, and folder analysis.
 """
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 __author__ = "Michael Akridge"
 __description__ = "JetStream: Cloud Data Manager for local-to-cloud uploads"
 
