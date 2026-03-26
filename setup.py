@@ -15,7 +15,7 @@ with open('requirements.txt', 'r', encoding='utf-8') as f:
 
 setup(
     name="noaa-jetstream",
-    version="0.1.7",
+    version="0.1.8",
     author="Michael Akridge",
     author_email="",
     description="JetStream: Cloud Data Manager - A comprehensive tool for managing local-to-cloud uploads",
