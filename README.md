@@ -87,6 +87,8 @@ gcloud auth list
 # Start the server (opens browser automatically)
 jetstream
 
+# view options
+jetstream --help
 # With custom options
 jetstream --port 9000
 jetstream --host 127.0.0.1 --port 8080
