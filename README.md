@@ -1,5 +1,5 @@
 # NOAA JetStream — Cloud Data Management Transfer System
-<img align="right" src="./docs/jetstream_logo_400px.png" alt="jetstream" width="250">
+<img align="right" src="https://github.com/MichaelAkridge-NOAA/jetstream/raw/main/docs/jetstream_logo_400px.png" alt="jetstream" width="250">
 
 A comprehensive web-based application for managing Google Cloud Storage uploads with features including job queuing, real-time analytics, cloud bucket analysis, and batch processing capabilities.
 
@@ -15,7 +15,7 @@ A comprehensive web-based application for managing Google Cloud Storage uploads 
 
 | Dashboard | Upload Jobs | Analytics |
 |-----------|-------------|----------|
-| ![Home](./docs/screenshot_home.png) | ![Uploads](./docs/screenshot_uploads.png) | ![Analytics](./docs/screenshot_analytics.png) |
+| ![Home](https://github.com/MichaelAkridge-NOAA/jetstream/raw/main/docs/screenshot_home.png) | ![Uploads](https://github.com/MichaelAkridge-NOAA/jetstream/raw/main/docs/screenshot_uploads.png) | ![Analytics](https://github.com/MichaelAkridge-NOAA/jetstream/raw/main/docs/screenshot_analytics.png) |
 
 ### Prerequisites
 
