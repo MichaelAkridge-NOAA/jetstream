@@ -19,48 +19,110 @@ A comprehensive web-based application for managing Google Cloud Storage uploads 
 
 ### Prerequisites
 
-- **Python 3.10+**
-- **Google Cloud SDK** (includes gsutil)
+- **Python 3.9+**
+- **Google Cloud SDK** (includes gsutil) — for cloud upload features
 - **Permissions** to target GCS buckets
+
+**OR** use Docker (see [Docker Installation](#docker-installation) below)
+
+---
 
 ### Installation
 
-### 1) Install Google Cloud SDK
-Download and install from: https://cloud.google.com/sdk/docs/install
-
-### 2) Authenticate with Google Cloud
-In a terminal, sign in to enable GCS access:
+#### Option 1: Install from PyPI (Recommended)
 
 ```bash
-gcloud auth login --no-launch-browser
-gcloud auth application-default login --no-launch-browser
+# Install core package
+pip install noaa-jetstream
+
+# Or install with Google Cloud support
+pip install noaa-jetstream[cloud]
+
+# Or install with desktop shortcuts
+pip install noaa-jetstream[shortcuts]
+
+# Or install everything
+pip install noaa-jetstream[all]
 ```
 
-Verify access (optional):
+#### Option 2: Install from Source (Development)
+
 ```bash
+# Clone the repository
+git clone https://github.com/MichaelAkridge-NOAA/jetstream.git
+cd jetstream
+
+# Install in development mode
+pip install -e .
+
+# Or with all optional features
+pip install -e ".[all]"
+```
+---
+
+### Google Cloud Setup (Optional)
+
+Required only for cloud upload features:
+
+```bash
+# Install Google Cloud SDK
+# Download from: https://cloud.google.com/sdk/docs/install
+
+# Authenticate
+gcloud auth login --no-launch-browser
+gcloud auth application-default login --no-launch-browser
+
+# Verify access (optional)
 gsutil ls
 gcloud auth list
 ```
 
-### 3) Install Python Dependencies
-From the jetstream project directory:
-
-```bash
-pip install -r requirements.txt
-```
+---
 
 ## Starting the Application
 
-### Quick Start
+### If Installed via pip
+
 ```bash
-python -m uvicorn jetstream_api.main:app --reload
-# or on Linux/macOS:
-python3 -m uvicorn jetstream_api.main:app --reload
+# Start the server (opens browser automatically)
+jetstream
+
+# With custom options
+jetstream --port 9000
+jetstream --host 127.0.0.1 --port 8080
+jetstream --no-browser
+jetstream --log-level debug
+```
+
+### If Running from Source
+
+```bash
+# Using the CLI
+python main.py
+
+# Or with the diagnostic startup script
+python start.py
+
+# Or directly with uvicorn
+python -m uvicorn jetstream.main:app --reload
 ```
 
 The application will start on **http://localhost:8000** and automatically open in your default browser.
 
-**To disable auto-browser opening:** Set environment variable `AUTO_OPEN_BROWSER=false` or add to `.env` file.
+### Desktop Shortcuts
+
+Create desktop and Start Menu shortcuts for easy access:
+
+```bash
+# Install with shortcuts support
+pip install noaa-jetstream[shortcuts]
+
+# Create shortcuts
+jetstream-create-shortcuts
+
+# Remove shortcuts
+jetstream-remove-shortcuts
+```
 
 ### Troubleshooting Startup Issues
 
@@ -73,8 +135,11 @@ The application will start on **http://localhost:8000** and automatically open i
    
 2. **Run with debug logging:**
    ```bash
-   python -m uvicorn jetstream_api.main:app --reload --log-level debug
+   jetstream --log-level debug
+   # or from source:
+   python -m uvicorn jetstream.main:app --reload --log-level debug
    ```
+---
 
 ## Troubleshooting
 

@@ -41,8 +41,8 @@ def main():
     logger.info(f"Platform: {sys.platform} ({platform.machine()}, {platform.architecture()[0]})")
     
     # Verify we're in the right directory
-    if not os.path.exists('jetstream_api'):
-        logger.error("ERROR: 'jetstream_api' folder not found!")
+    if not os.path.exists('jetstream'):
+        logger.error("ERROR: 'jetstream' folder not found!")
         logger.error("You must run this from the jetstream project directory.")
         logger.error(f"Current directory: {os.getcwd()}")
         logger.error("\nExample:")
@@ -79,7 +79,7 @@ def main():
     # Step 3: Test config import
     print("\n[2/6] Loading configuration...")
     try:
-        from jetstream_api.config import settings
+        from jetstream.config import settings
         logger.info(f"[OK] Config loaded")
         logger.info(f"  - Host: {settings.HOST}")
         logger.info(f"  - Port: {settings.PORT}")
@@ -92,7 +92,7 @@ def main():
     # Step 4: Test database module import
     print("\n[3/6] Testing database module...")
     try:
-        from jetstream_api import database
+        from jetstream import database
         logger.info(f"[OK] Database module imported")
     except Exception as e:
         logger.error(f"[FAIL] Database module import failed: {e}")
@@ -102,7 +102,7 @@ def main():
     # Step 5: Test database initialization
     print("\n[4/6] Initializing database...")
     try:
-        from jetstream_api.database import init_db
+        from jetstream.database import init_db
         init_db()
         logger.info(f"[OK] Database initialized")
         
@@ -125,7 +125,7 @@ def main():
     # Step 6: Test full app import
     print("\n[5/6] Importing FastAPI application...")
     try:
-        from jetstream_api.main import app
+        from jetstream.main import app
         logger.info(f"[OK] FastAPI app imported successfully")
     except Exception as e:
         logger.error(f"[FAIL] App import failed: {e}")
@@ -144,7 +144,7 @@ def main():
     try:
         import uvicorn
         uvicorn.run(
-            "jetstream_api.main:app",
+            "jetstream.main:app",
             host=settings.HOST,
             port=settings.PORT,
             reload=False,  # Disabled for cleaner diagnostic output

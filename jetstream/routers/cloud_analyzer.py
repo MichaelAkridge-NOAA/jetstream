@@ -3,11 +3,28 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
-from google.cloud import storage
 from datetime import datetime, timezone
 import asyncio
 import subprocess
 import uuid
+
+# Lazy import for Google Cloud Storage to avoid startup crashes
+# Will be imported only when actually needed
+def get_storage_client():
+    """Lazy import and initialize Google Cloud Storage client."""
+    try:
+        from google.cloud import storage
+        return storage.Client()
+    except ImportError:
+        raise HTTPException(
+            status_code=503,
+            detail="Google Cloud Storage library not installed. Install with: pip install google-cloud-storage"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=401,
+            detail=f"Authentication failed. Please run 'gcloud auth application-default login' or set GOOGLE_APPLICATION_CREDENTIALS environment variable. Error: {str(e)}"
+        )
 
 router = APIRouter()
 
@@ -54,18 +71,8 @@ async def analyze_bucket(request: CloudAnalysisRequest):
     try:
         def analyze_sync():
             """Synchronous analysis function to run in thread."""
-            try:
-                # Use Application Default Credentials (ADC)
-                # This automatically finds credentials from:
-                # 1. GOOGLE_APPLICATION_CREDENTIALS env var
-                # 2. gcloud auth application-default credentials
-                # 3. Compute Engine/Cloud Run service account
-                client = storage.Client()
-            except Exception as e:
-                raise HTTPException(
-                    status_code=401, 
-                    detail=f"Authentication failed. Please run 'gcloud auth application-default login' or set GOOGLE_APPLICATION_CREDENTIALS environment variable. Error: {str(e)}"
-                )
+            # Use lazy-loaded storage client
+            client = get_storage_client()
             
             bucket = client.bucket(request.bucket_name)
             
@@ -159,14 +166,8 @@ async def get_bucket_summary(bucket_name: str):
     """Get quick summary of a GCS bucket."""
     try:
         def get_summary():
-            try:
-                # Use Application Default Credentials (ADC)
-                client = storage.Client()
-            except Exception as e:
-                raise HTTPException(
-                    status_code=401, 
-                    detail=f"Authentication failed. Please run 'gcloud auth application-default login' or set GOOGLE_APPLICATION_CREDENTIALS environment variable. Error: {str(e)}"
-                )
+            # Use lazy-loaded storage client
+            client = get_storage_client()
             
             bucket = client.bucket(bucket_name)
             

@@ -1,0 +1,19 @@
+# Include documentation
+include README.md
+include LICENSE.md
+include requirements.txt
+
+# Include static web files from package
+recursive-include jetstream/static *.html *.css *.js
+
+# Include logs directory structure (empty)
+recursive-include logs .gitkeep
+
+# Exclude unnecessary files
+global-exclude __pycache__
+global-exclude *.py[co]
+global-exclude .DS_Store
+global-exclude *.swp
+global-exclude .gitignore
+global-exclude *.db
+global-exclude *.log

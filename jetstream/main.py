@@ -24,16 +24,27 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from pathlib import Path
 import uvicorn
 import webbrowser
 import asyncio
 import os
 import logging
 
-from .routers import uploads, stats, queue, folders, analytics, cloud_analyzer, settings as settings_router
+from .routers import uploads, stats, queue, folders, analytics, settings as settings_router
 from .database import init_db, close_db
 from .config import settings
 from .scheduler import scheduler
+
+# Import cloud_analyzer separately with error handling to prevent startup crashes
+try:
+    from .routers import cloud_analyzer
+    CLOUD_ANALYZER_AVAILABLE = True
+except Exception as e:
+    logger = logging.getLogger(__name__)
+    logger.warning(f"Cloud analyzer disabled due to import error: {e}")
+    cloud_analyzer = None
+    CLOUD_ANALYZER_AVAILABLE = False
 
 # Configure logging to be very verbose
 logging.basicConfig(
@@ -57,15 +68,6 @@ async def lifespan(app: FastAPI):
         logger.info(f"   Platform: {os.name} | Python: {os.sys.version.split()[0]}")
         logger.info(f"   Working Directory: {os.getcwd()}")
         logger.info(f"   Database Path: {os.path.abspath('jetstream.db')}")
-        
-        # Verify we're in the right directory
-        if not os.path.exists('jetstream_api'):
-            logger.error("=" * 70)
-            logger.error("[ERROR] 'jetstream_api' folder not found!")
-            logger.error("You must run this from the jetstream project directory.")
-            logger.error(f"Current directory: {os.getcwd()}")
-            logger.error("=" * 70)
-            raise RuntimeError("Wrong working directory - run from jetstream folder")
         
         logger.info("=" * 70)
         
@@ -147,20 +149,39 @@ app.include_router(stats.router, prefix="/api/stats", tags=["Statistics"])
 app.include_router(queue.router, prefix="/api/queue", tags=["Queue"])
 app.include_router(folders.router, prefix="/api/folders", tags=["Folders"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
-app.include_router(cloud_analyzer.router, prefix="/api/cloud", tags=["Cloud Analyzer"])
+
+# Include cloud analyzer only if it loaded successfully
+if CLOUD_ANALYZER_AVAILABLE:
+    app.include_router(cloud_analyzer.router, prefix="/api/cloud", tags=["Cloud Analyzer"])
+    logger.info("[OK] Cloud analyzer router enabled")
+else:
+    logger.warning("[WARN] Cloud analyzer router disabled")
+
 app.include_router(settings_router.router, prefix="/api/settings", tags=["Settings"])
 
 # Serve static files (dashboard)
+# Use package-relative path for static files
+import importlib.resources
 try:
-    app.mount("/static", StaticFiles(directory="jetstream_api/static"), name="static")
-except RuntimeError:
-    pass  # Directory doesn't exist yet
+    # Try package path first (installed package)
+    import jetstream
+    static_dir = Path(jetstream.__file__).parent / "static"
+    if not static_dir.exists():
+        # Fallback to relative path (development)
+        static_dir = Path("jetstream/static")
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+except Exception as e:
+    logger.warning(f"Could not mount static files: {e}")
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
     """Serve the main dashboard."""
     try:
-        return FileResponse("jetstream_api/static/index.html")
+        import jetstream
+        index_path = Path(jetstream.__file__).parent / "static" / "index.html"
+        if not index_path.exists():
+            index_path = Path("jetstream/static/index.html")
+        return FileResponse(str(index_path))
     except FileNotFoundError:
         return """
         <html>
@@ -184,7 +205,7 @@ async def health_check():
 
 if __name__ == "__main__":
     uvicorn.run(
-        "jetstream_api.main:app",
+        "jetstream.main:app",
         host=settings.HOST,
         port=settings.PORT,
         reload=settings.DEBUG

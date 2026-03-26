@@ -1,0 +1,83 @@
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "noaa-jetstream"
+version = "0.1.0"
+description = "JetStream: Cloud Data Manager - A comprehensive tool for managing local-to-cloud uploads with queue management, statistics, and folder analysis"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+keywords = ["cloud", "upload", "gcs", "google-cloud", "data-management", "queue", "noaa"]
+authors = [
+  {name = "Michael Akridge"}
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Operating System :: OS Independent",
+]
+
+dependencies = [
+  "fastapi>=0.109.0",
+  "fastapi-cli>=0.0.20",
+  "uvicorn[standard]>=0.27.0",
+  "python-multipart>=0.0.6",
+  "sqlalchemy>=2.0.25",
+  "alembic>=1.13.0",
+  "pydantic>=2.7.0",
+  "pydantic-settings>=2.1.0",
+  "aiofiles>=23.2.0",
+  "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+cloud = [
+  "google-cloud-storage>=2.14.0",
+  "google-auth>=2.27.0",
+  "google-auth-oauthlib>=1.2.0",
+]
+shortcuts = [
+  "pyshortcuts>=1.9.0",
+]
+dev = [
+  "pytest>=7.0.0",
+  "pytest-asyncio>=0.21.0",
+  "black>=23.0.0",
+  "flake8>=6.0.0",
+]
+all = [
+  "noaa-jetstream[cloud,shortcuts,dev]",
+]
+
+[project.urls]
+Homepage = "https://github.com/MichaelAkridge-NOAA/jetstream"
+Documentation = "https://github.com/MichaelAkridge-NOAA/jetstream#readme"
+Repository = "https://github.com/MichaelAkridge-NOAA/jetstream"
+"Bug Tracker" = "https://github.com/MichaelAkridge-NOAA/jetstream/issues"
+
+[project.scripts]
+jetstream = "jetstream.cli:main"
+jetstream-server = "jetstream.cli:main"
+jetstream-create-shortcuts = "jetstream.shortcuts:main_create"
+jetstream-remove-shortcuts = "jetstream.shortcuts:main_remove"
+
+[tool.setuptools]
+packages = ["jetstream", "jetstream.routers"]
+
+[tool.setuptools.package-data]
+jetstream = [
+  "static/*.html",
+  "static/*.ico",
+  "static/*.png",
+  "static/css/*.css",
+  "static/js/*.js",
+]

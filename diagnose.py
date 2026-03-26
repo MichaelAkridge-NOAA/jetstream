@@ -84,12 +84,12 @@ def check_project_structure():
     print_header("Project Structure")
     
     required_files = [
-        'jetstream_api/__init__.py',
-        'jetstream_api/main.py',
-        'jetstream_api/config.py',
-        'jetstream_api/database.py',
-        'jetstream_api/scheduler.py',
-        'jetstream_api/static/index.html',
+        'jetstream/__init__.py',
+        'jetstream/main.py',
+        'jetstream/config.py',
+        'jetstream/database.py',
+        'jetstream/scheduler.py',
+        'jetstream/static/index.html',
         'requirements.txt',
     ]
     
@@ -109,7 +109,7 @@ def check_imports():
     print_header("Application Import Test")
     
     try:
-        from jetstream_api.main import app
+        from jetstream.main import app
         print("✓ Successfully imported FastAPI app")
         return True
     except Exception as e:
@@ -125,7 +125,7 @@ def check_database():
     print_header("Database Initialization")
     
     try:
-        from jetstream_api.database import init_db
+        from jetstream.database import init_db
         init_db()
         print("✓ Database initialized successfully")
         
@@ -273,9 +273,9 @@ def main():
         print("✓ JetStream can start!")
         print("\nStart the application with:")
         if sys.platform == "win32":
-            print("  python -m uvicorn jetstream_api.main:app --reload")
+            print("  python -m uvicorn jetstream.main:app --reload")
         else:
-            print("  python3 -m uvicorn jetstream_api.main:app --reload")
+            print("  python3 -m uvicorn jetstream.main:app --reload")
         
         if gcloud_status != 'pass':
             print("\n⚠️  Note: Google Cloud uploads won't work until gcloud is configured.")

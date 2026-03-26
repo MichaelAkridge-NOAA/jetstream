@@ -53,6 +53,13 @@ dist/
 build/
 *.egg-info/
 *.egg
+.eggs/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.manifest
+*.spec
+MANIFEST
 
 # Backup files
 *_old.py
