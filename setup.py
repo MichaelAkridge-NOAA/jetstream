@@ -39,17 +39,11 @@ setup(
     python_requires=">=3.9",
     install_requires=requirements,
     extras_require={
-        "shortcuts": [
-            "pyshortcuts>=1.9.0",
-        ],
         "dev": [
             "pytest>=7.0.0",
             "pytest-asyncio>=0.21.0",
             "black>=23.0.0",
             "flake8>=6.0.0",
-        ],
-        "all": [
-            "pyshortcuts>=1.9.0",
         ],
     },
     entry_points={

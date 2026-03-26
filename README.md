@@ -43,14 +43,8 @@ gcloud auth list
 #### Option 1: Install from PyPI (Recommended)
 
 ```bash
-# Install (includes Google Cloud support)
+# Install (includes Google Cloud support + desktop shortcuts)
 pip install noaa-jetstream
-
-# Or install with desktop shortcuts
-pip install noaa-jetstream[shortcuts]
-
-# Or install everything (shortcuts + dev tools)
-pip install noaa-jetstream[all]
 
 # If you run into dependency resolver warnings (e.g. in Anaconda), use --no-cache-dir
 pip install --no-cache-dir noaa-jetstream
@@ -109,18 +103,17 @@ The application will start on **http://localhost:8000** and automatically open i
 
 ### Desktop Shortcuts
 
-Create desktop and Start Menu shortcuts for easy access:
+Desktop and Start Menu shortcuts are included with the default install. The shortcut will automatically use the JetStream icon (`icon.ico`) when created.
 
 ```bash
-# Install with shortcuts support
-pip install noaa-jetstream[shortcuts]
-
-# Create shortcuts
+# Create desktop + Start Menu shortcut (uses JetStream icon automatically)
 jetstream-create-shortcuts
 
 # Remove shortcuts
 jetstream-remove-shortcuts
 ```
+
+Shortcuts launch JetStream directly using the current Python environment and open a terminal window. On Windows a `.lnk` shortcut is created on the desktop and in the Start Menu. On macOS/Linux a `.app`/`.desktop` shortcut is created in Applications.
 
 ### Troubleshooting Startup Issues
 
