@@ -43,12 +43,18 @@ gcloud auth list
 #### Option 1: Install from PyPI (Recommended)
 - Link: https://pypi.org/project/noaa-jetstream/
 ```bash
-# Install (includes Google Cloud support + desktop shortcuts)
 pip install noaa-jetstream
-
-# If you run into dependency resolver warnings (e.g. in Anaconda), use --no-cache-dir
-pip install --no-cache-dir noaa-jetstream
 ```
+
+> **Using Anaconda/conda?** If you see dependency resolver warnings, use `uv` (recommended) or `--no-cache-dir`:
+> ```bash
+> # Option A: use uv (faster, cleaner resolver — recommended for conda users)
+> pip install uv
+> uv pip install noaa-jetstream
+>
+> # Option B: skip pip cache
+> pip install --no-cache-dir --no-user noaa-jetstream
+> ```
 
 #### Option 2: Install from Source (Development)
 
@@ -60,11 +66,9 @@ cd jetstream
 # Install in development mode
 pip install -e .
 
-# Or with all runtime optional features
-pip install -e ".[all]"
-
-# Or include development tools too
-pip install -e ".[all,dev]"
+# Or using uv (recommended)
+pip install uv
+uv pip install -e ".[dev]"
 ```
 
 ---
