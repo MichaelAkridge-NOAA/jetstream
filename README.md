@@ -51,6 +51,9 @@ pip install noaa-jetstream[shortcuts]
 
 # Or install everything (shortcuts + dev tools)
 pip install noaa-jetstream[all]
+
+# If you run into dependency resolver warnings (e.g. in Anaconda), use --no-cache-dir
+pip install --no-cache-dir noaa-jetstream
 ```
 
 #### Option 2: Install from Source (Development)
