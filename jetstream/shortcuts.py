@@ -102,12 +102,28 @@ def create_shortcuts():
         
         return True
         
-    except ImportError:
-        print("\n⚠️  pyshortcuts package not found.")
-        print("\nTo enable automatic shortcut creation, install it:")
-        print("   pip install pyshortcuts")
-        print("\nThen run this command again:")
-        print("   jetstream-create-shortcuts")
+    except ImportError as e:
+        import sys
+        # Check if pyshortcuts is installed but missing a sub-dependency (e.g. pywin32)
+        try:
+            import importlib.util
+            if importlib.util.find_spec("pyshortcuts") is not None:
+                print("\n⚠️  pyshortcuts is installed but a dependency is missing.")
+                print(f"   Error: {e}")
+                if sys.platform == "win32" and "pywin32" in str(e):
+                    print("\nFix: install the missing Windows dependency:")
+                    print("   pip install pywin32")
+                else:
+                    print("\nFix: reinstall with:")
+                    print("   pip install --force-reinstall pyshortcuts")
+            else:
+                print("\n⚠️  pyshortcuts package not found.")
+                print("\nFix: it should have been included. Reinstall the package:")
+                print("   pip install --force-reinstall noaa-jetstream")
+        except Exception:
+            print(f"\n⚠️  Import error: {e}")
+        print("\nYou can still run JetStream from the command line:")
+        print("   jetstream")
         return False
     except Exception as e:
         print(f"\n❌ Error creating shortcuts: {e}")

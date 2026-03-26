@@ -41,6 +41,7 @@ dependencies = [
   "google-auth>=2.27.0",
   "google-auth-oauthlib>=1.2.0",
   "pyshortcuts>=1.9.0",
+  "pywin32>=305; platform_system=='Windows'",
 ]
 
 [project.optional-dependencies]
