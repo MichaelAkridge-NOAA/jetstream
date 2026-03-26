@@ -22,13 +22,24 @@ A comprehensive web-based application for managing Google Cloud Storage uploads 
 - **Python 3.9+**
 - **Google Cloud SDK** (includes gsutil) — for cloud upload features
 - **Permissions** to target GCS buckets
-
-**OR** use Docker (see [Docker Installation](#docker-installation) below)
-
 ---
+### Google Cloud Setup
+
+Required only for cloud upload features:
+```bash
+# Install Google Cloud SDK
+# Download from: https://cloud.google.com/sdk/docs/install
+
+# Authenticate
+gcloud auth login --no-launch-browser
+gcloud auth application-default login --no-launch-browser
+
+# Verify access (optional)
+gsutil ls
+gcloud auth list
+```
 
 ### Installation
-
 #### Option 1: Install from PyPI (Recommended)
 
 ```bash
@@ -57,24 +68,6 @@ pip install -e .
 
 # Or with all optional features
 pip install -e ".[all]"
-```
----
-
-### Google Cloud Setup (Optional)
-
-Required only for cloud upload features:
-
-```bash
-# Install Google Cloud SDK
-# Download from: https://cloud.google.com/sdk/docs/install
-
-# Authenticate
-gcloud auth login --no-launch-browser
-gcloud auth application-default login --no-launch-browser
-
-# Verify access (optional)
-gsutil ls
-gcloud auth list
 ```
 
 ---
