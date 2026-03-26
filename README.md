@@ -43,16 +43,13 @@ gcloud auth list
 #### Option 1: Install from PyPI (Recommended)
 
 ```bash
-# Install core package
+# Install (includes Google Cloud support)
 pip install noaa-jetstream
-
-# Or install with Google Cloud support
-pip install noaa-jetstream[cloud]
 
 # Or install with desktop shortcuts
 pip install noaa-jetstream[shortcuts]
 
-# Or install everything
+# Or install everything (shortcuts + dev tools)
 pip install noaa-jetstream[all]
 ```
 
@@ -66,8 +63,11 @@ cd jetstream
 # Install in development mode
 pip install -e .
 
-# Or with all optional features
+# Or with all runtime optional features
 pip install -e ".[all]"
+
+# Or include development tools too
+pip install -e ".[all,dev]"
 ```
 
 ---

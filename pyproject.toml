@@ -37,14 +37,12 @@ dependencies = [
   "pydantic-settings>=2.1.0",
   "aiofiles>=23.2.0",
   "python-dotenv>=1.0.0",
-]
-
-[project.optional-dependencies]
-cloud = [
   "google-cloud-storage>=2.14.0",
   "google-auth>=2.27.0",
   "google-auth-oauthlib>=1.2.0",
 ]
+
+[project.optional-dependencies]
 shortcuts = [
   "pyshortcuts>=1.9.0",
 ]
@@ -55,7 +53,7 @@ dev = [
   "flake8>=6.0.0",
 ]
 all = [
-  "noaa-jetstream[cloud,shortcuts,dev]",
+  "noaa-jetstream[shortcuts]",
 ]
 
 [project.urls]

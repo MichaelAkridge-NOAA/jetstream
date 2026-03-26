@@ -39,11 +39,6 @@ setup(
     python_requires=">=3.9",
     install_requires=requirements,
     extras_require={
-        "cloud": [
-            "google-cloud-storage>=2.14.0",
-            "google-auth>=2.27.0",
-            "google-auth-oauthlib>=1.2.0",
-        ],
         "shortcuts": [
             "pyshortcuts>=1.9.0",
         ],
@@ -52,6 +47,9 @@ setup(
             "pytest-asyncio>=0.21.0",
             "black>=23.0.0",
             "flake8>=6.0.0",
+        ],
+        "all": [
+            "pyshortcuts>=1.9.0",
         ],
     },
     entry_points={

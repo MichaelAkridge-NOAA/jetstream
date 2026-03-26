@@ -14,7 +14,7 @@ alembic>=1.13.0
 pydantic>=2.7.0
 pydantic-settings>=2.1.0
 
-# Google Cloud (optional - for cloud upload features)
+# Google Cloud (required - core cloud upload features)
 google-cloud-storage>=2.14.0
 google-auth>=2.27.0
 google-auth-oauthlib>=1.2.0
