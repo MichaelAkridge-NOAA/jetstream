@@ -56,6 +56,11 @@ pip install noaa-jetstream
 > pip install --no-cache-dir --no-user noaa-jetstream
 > ```
 
+#### Upgrade
+```
+uv pip install --no-cache --upgrade noaa-jetstream
+```
+
 #### Option 2: Install from Source (Development)
 
 ```bash
