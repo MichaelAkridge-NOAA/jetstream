@@ -19,23 +19,38 @@ class SettingsResponse(BaseModel):
 async def get_settings():
     """Get current settings and check ADC authentication status."""
     from ..config import settings
-    from google.cloud import storage
-    
+
     authenticated = False
     auth_method = None
     gcloud_account = None
-    
-    # Check if ADC is configured
+
+    # Check if ADC credentials are configured using a LOCAL-ONLY check.
+    # Deliberately avoid storage.Client() here.
+    #
+    # storage.Client() is safe when the local ADC access token is fresh (reads
+    # from disk, no network needed).  But when the token is EXPIRED it calls
+    # oauth2.googleapis.com to refresh — that outbound HTTPS request can be
+    # blocked indefinitely by corporate firewalls/proxies, causing the API
+    # endpoint to hang, the browser to give up, and "NetworkError" to appear.
+    #
+    # google.auth.default() only inspects local credential files / env vars and
+    # never attempts a token refresh, so it is always safe regardless of network
+    # conditions or token freshness.
     try:
-        client = storage.Client()
+        import google.auth
+        import google.auth.exceptions
+
+        # google.auth.default() reads the local ADC file / env vars only.
+        # It does NOT make any network calls, so it is safe behind firewalls.
+        credentials, _project = google.auth.default()
         authenticated = True
-        
+
         # Determine auth method
         if os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'):
             auth_method = "Service Account (GOOGLE_APPLICATION_CREDENTIALS)"
         else:
             auth_method = "User Credentials (gcloud ADC)"
-            # Try to get gcloud account info
+            # Try to get gcloud account info (quick subprocess, 5 s timeout)
             try:
                 result = subprocess.run(
                     ['gcloud', 'auth', 'list', '--filter=status:ACTIVE', '--format=value(account)'],
@@ -43,11 +58,11 @@ async def get_settings():
                 )
                 if result.returncode == 0 and result.stdout.strip():
                     gcloud_account = result.stdout.strip()
-            except:
+            except Exception:
                 pass
-    except:
+    except Exception:
         authenticated = False
-    
+
     return SettingsResponse(
         gcs_authenticated=authenticated,
         auth_method=auth_method,
