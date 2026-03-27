@@ -194,13 +194,21 @@ async def root():
         </html>
         """
 
+@app.get("/api/version")
+async def get_version():
+    """Return the current application version from the package metadata."""
+    from jetstream import __version__
+    return {"version": __version__}
+
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
+    from jetstream import __version__
     return {
         "status": "healthy",
         "service": "jetstream-api",
-        "version": "1.0.0"
+        "version": __version__
     }
 
 if __name__ == "__main__":

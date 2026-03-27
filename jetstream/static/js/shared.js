@@ -32,6 +32,39 @@ function loadThemeOnStartup() {
 // Apply theme on every page load
 document.addEventListener('DOMContentLoaded', loadThemeOnStartup);
 
+// ===== VERSION BADGE =====
+
+async function loadVersionBadge() {
+    try {
+        const response = await fetch('/api/version');
+        const data = await response.json();
+        const version = data.version || '';
+        if (!version) return;
+
+        // Inject into every page's header subtitle
+        const subtitle = document.querySelector('.header-content p');
+        if (subtitle) {
+            subtitle.innerHTML =
+                'Cloud Data Management System' +
+                ' <span style="' +
+                    'display:inline-block;' +
+                    'margin-left:8px;' +
+                    'padding:1px 7px;' +
+                    'font-size:0.72em;' +
+                    'font-weight:600;' +
+                    'letter-spacing:0.04em;' +
+                    'border-radius:999px;' +
+                    'background:rgba(255,255,255,0.18);' +
+                    'border:1px solid rgba(255,255,255,0.35);' +
+                    'color:inherit;' +
+                    'vertical-align:middle;' +
+                '">v' + version + '</span>';
+        }
+    } catch (e) { /* silently ignore — version badge is cosmetic */ }
+}
+
+document.addEventListener('DOMContentLoaded', loadVersionBadge);
+
 // ===== REFRESH INTERVAL =====
 
 /**

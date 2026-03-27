@@ -73,11 +73,13 @@ def main():
     print("Press Ctrl+C to stop the server")
     print()
     
-    # Open browser automatically unless disabled
+    # Open browser automatically unless disabled.
+    # Also set BROWSER_OPENED so the lifespan in main.py doesn't open a second tab.
     if not args.no_browser:
         url = f"http://localhost:{args.port}"
+        os.environ["BROWSER_OPENED"] = "true"
         open_browser(url, delay=2.0)
-    
+
     # Start server
     uvicorn.run(
         "jetstream.main:app",
