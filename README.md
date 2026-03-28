@@ -51,7 +51,8 @@ pip install noaa-jetstream
 > # Option A: use uv (faster, cleaner resolver — recommended for conda users)
 > pip install uv
 > uv pip install noaa-jetstream
->
+> # May need to create virtual environment first, so do it in a local directory then activate uv venv then .venv\Activate\scripts.bat
+> 
 > # Option B: skip pip cache
 > pip install --no-cache-dir --no-user noaa-jetstream
 > ```
