@@ -75,6 +75,7 @@ pip install -e .
 # Or using uv (recommended)
 pip install uv
 uv pip install -e ".[dev]"
+# May need to pip install uvicorn, pip install fastapi, pip install google-cloud-storage separately
 ```
 
 ---
