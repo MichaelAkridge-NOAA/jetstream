@@ -118,6 +118,11 @@ The application will start on **http://localhost:8000** and automatically open i
 ## Terminal UI (TUI)
 
 JetStream ships a full terminal dashboard — think **htop + ranger + gsutil** — that runs in any terminal or SSH session without a browser.
+## Screenshots
+
+| Dashboard | Upload Jobs | Analytics |
+|-----------|-------------|----------|
+| ![Home](https://github.com/MichaelAkridge-NOAA/jetstream/raw/main/docs/tui_s01.png) | ![Uploads](https://github.com/MichaelAkridge-NOAA/jetstream/raw/main/docs/tui_s02.png) | ![Analytics](https://github.com/MichaelAkridge-NOAA/jetstream/raw/main/docs/tui_s03.png) |
 
 ### Launch
 

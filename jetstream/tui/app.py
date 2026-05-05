@@ -37,6 +37,7 @@ class JetStreamApp(App):
 
     def __init__(self) -> None:
         super().__init__()
+        self.theme = "dracula"
         self.controller = JetStreamController()
 
     # ------------------------------------------------------------------

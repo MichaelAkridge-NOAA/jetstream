@@ -8,6 +8,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+_SCHEDULER_POLL_SECONDS = 5
+
 class UploadScheduler:
     """Manages scheduled upload jobs."""
     
@@ -37,7 +39,7 @@ class UploadScheduler:
         logger.info("[OK] Upload scheduler stopped")
         
     async def _scheduler_loop(self):
-        """Main scheduler loop - checks for scheduled jobs every minute."""
+        """Main scheduler loop - checks for scheduled jobs frequently."""
         # Import here to avoid circular imports
         from .services import upload_service, queue_manager
         from . import database
@@ -50,15 +52,14 @@ class UploadScheduler:
                 # Check if database is ready
                 if database.SessionLocal is None:
                     logger.warning("Database not ready, skipping check")
-                    await asyncio.sleep(5)
+                    await asyncio.sleep(_SCHEDULER_POLL_SECONDS)
                     continue
                     
                 await self._check_scheduled_jobs(upload_service, queue_manager)
-                # Sleep for 30 seconds before next check
-                await asyncio.sleep(30)
+                await asyncio.sleep(_SCHEDULER_POLL_SECONDS)
             except Exception as e:
                 logger.error(f"Scheduler error: {str(e)}", exc_info=True)
-                await asyncio.sleep(30)
+                await asyncio.sleep(_SCHEDULER_POLL_SECONDS)
                 
     async def _check_scheduled_jobs(self, upload_service, queue_manager):
         """Check for jobs scheduled to run now and trigger them."""
@@ -70,7 +71,8 @@ class UploadScheduler:
             
         db: Session = database.SessionLocal()
         try:
-            now = datetime.now(timezone.utc)
+            # Keep scheduler comparisons in naive UTC to match DB DateTime storage.
+            now = datetime.utcnow()
             
             # Find jobs scheduled for now or earlier that are still in 'scheduled' status
             scheduled_jobs = db.query(UploadJob).filter(
@@ -188,7 +190,7 @@ class UploadScheduler:
                 max_retries = getattr(job, 'max_auto_retries', 3) or 3
                 if getattr(job, 'auto_retry', False) and retry_count < max_retries:
                     delay = getattr(job, 'auto_retry_delay_minutes', 30) or 30
-                    job.next_retry_at = datetime.now(timezone.utc) + timedelta(minutes=delay)
+                    job.next_retry_at = datetime.utcnow() + timedelta(minutes=delay)
                     job.retry_count = retry_count + 1
                     job.status = "scheduled"
                     job.scheduled_for = job.next_retry_at

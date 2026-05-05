@@ -44,15 +44,19 @@ class UploadRequest(BaseModel):
     
     @validator('scheduled_for')
     def convert_to_utc(cls, v):
-        """Convert scheduled_for to UTC if it has timezone info."""
+        """Normalize scheduled_for to naive UTC for DB consistency."""
         if v is None:
             return v
-        from datetime import timezone
-        # If timezone aware, convert to UTC
-        if v.tzinfo is not None:
-            v = v.astimezone(timezone.utc)
-        # If naive, assume it's already UTC
-        return v
+        from datetime import datetime, timezone
+
+        # Treat naive input as local wall-clock time, then convert to UTC.
+        if v.tzinfo is None:
+            local_tz = datetime.now().astimezone().tzinfo
+            if local_tz is not None:
+                v = v.replace(tzinfo=local_tz)
+
+        # Store as naive UTC to match SQLite DateTime behavior in this app.
+        return v.astimezone(timezone.utc).replace(tzinfo=None)
     
     @validator('source_path')
     def validate_source_path(cls, v):

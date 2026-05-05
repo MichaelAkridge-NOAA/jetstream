@@ -353,11 +353,11 @@ class DateTimePickerScreen(ModalScreen[str | None]):
                 self.query_one("#ampm-btn", Button).label = self._ampm_str
             return
         if bid == "min-dec":
-            self._minute = (self._minute - 5) % 60
+            self._minute = (self._minute - 1) % 60
             self._refresh_time_labels()
             return
         if bid == "min-inc":
-            self._minute = (self._minute + 5) % 60
+            self._minute = (self._minute + 1) % 60
             self._refresh_time_labels()
             return
 

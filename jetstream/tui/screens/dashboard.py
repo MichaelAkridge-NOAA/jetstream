@@ -29,6 +29,7 @@ from ..widgets.job_detail import JobDetailWidget
 from ..widgets.job_table import JobTableWidget
 from ..widgets.logo import LogoWidget
 from ..widgets.queue_status import QueueStatusBar
+from ..widgets.system_metrics import SystemMetricsWidget
 
 
 _REFRESH_INTERVAL = 3.0  # seconds between auto-refresh
@@ -57,16 +58,16 @@ class DashboardScreen(Screen):
         layout: vertical;
     }
     #header-row {
-        height: 6;
+        height: 8;
         layout: horizontal;
     }
     #logo-area {
         width: 26;
-        height: 6;
+        height: 8;
     }
     #status-area {
         width: 1fr;
-        height: 6;
+        height: 8;
     }
     #main-row {
         height: 1fr;
@@ -101,6 +102,7 @@ class DashboardScreen(Screen):
                 yield LogoWidget()
             with Vertical(id="status-area"):
                 yield QueueStatusBar()
+                yield SystemMetricsWidget()
         with Horizontal(id="main-row"):
             with Vertical(id="left-panel"):
                 yield Static("Filter: [bold]ALL[/bold]  F1=All F2=Running F3=Failed", id="filter-bar")

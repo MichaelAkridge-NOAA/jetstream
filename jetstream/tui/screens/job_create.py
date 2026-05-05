@@ -284,7 +284,7 @@ class JobCreateScreen(Screen):
                 yield Label("─ SCHEDULING & AUTO-RETRY ─", classes="col-head")
 
                 with Vertical(classes="field-row"):
-                    yield Label("Schedule For (optional)", classes="field-label")
+                    yield Label("Schedule For (local time, optional)", classes="field-label")
                     with Horizontal(classes="dt-input-row"):
                         yield Input(placeholder="2026-05-10T14:00:00", id="scheduled-for")
                         yield Button("📅", id="btn-pick-dt", variant="default")
