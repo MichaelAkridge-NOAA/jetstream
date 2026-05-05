@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+import asyncio
 
 from ..database import get_db, UploadJob
 from ..services import queue_manager
@@ -39,15 +40,20 @@ async def get_queued_jobs(db: Session = Depends(get_db)):
 
 @router.post("/pause")
 async def pause_queue():
-    """Pause queue processing (stop accepting new jobs)."""
-    # TODO: Implement queue pause logic
-    return {"message": "Queue paused", "status": "paused"}
+    """Pause queue — no new jobs will start until resumed."""
+    queue_manager.pause()
+    return {"message": "Queue paused", "status": "paused", "paused": True}
 
 @router.post("/resume")
 async def resume_queue():
-    """Resume queue processing."""
-    # TODO: Implement queue resume logic
-    return {"message": "Queue resumed", "status": "active"}
+    """Resume queue processing and trigger the next waiting job if any."""
+    queue_manager.resume()
+    # Kick off the next queued job if one is waiting
+    next_job_id = queue_manager.get_next_job()
+    if next_job_id:
+        from ..routers.uploads import process_upload_job
+        asyncio.create_task(process_upload_job(next_job_id, ""))
+    return {"message": "Queue resumed", "status": "active", "paused": False}
 
 @router.get("/history")
 async def get_queue_history(limit: int = 50, db: Session = Depends(get_db)):

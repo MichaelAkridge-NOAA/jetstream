@@ -60,28 +60,34 @@
                 <form class="upload-form" id="cloud-transfer-form">
                     <div class="form-group">
                         <label for="source-bucket">Source Bucket Path</label>
-                        <input type="text" id="source-bucket" placeholder="nmfs_odp_pifsc/path/to/data" required>
+                        <input type="text" id="source-bucket" placeholder="nmfs_odp_pifsc/path/to/data" oninput="updateCloudPathPreview()" required>
                         <small style="color: #64748b; display: block; margin-top: 4px;">
-                            Quick fill: 
-                            <a href="#" onclick="document.getElementById('source-bucket').value='nmfs_odp_pifsc/'; document.getElementById('source-bucket').focus(); return false;" style="color: var(--primary);">PIFSC</a> |
-                            <a href="#" onclick="document.getElementById('source-bucket').value='nmfs_odp_afsc/'; document.getElementById('source-bucket').focus(); return false;" style="color: var(--primary);">AFSC</a> |
-                            <a href="#" onclick="document.getElementById('source-bucket').value='nmfs_odp_swfsc/'; document.getElementById('source-bucket').focus(); return false;" style="color: var(--primary);">SWFSC</a> |
-                            <a href="#" onclick="document.getElementById('source-bucket').value='nmfs_odp_nefsc/'; document.getElementById('source-bucket').focus(); return false;" style="color: var(--primary);">NEFSC</a> |
-                            <a href="#" onclick="document.getElementById('source-bucket').value='nmfs_odp_nwfsc/'; document.getElementById('source-bucket').focus(); return false;" style="color: var(--primary);">NWFSC</a>
+                            Quick fill:
+                            <a href="#" onclick="document.getElementById('source-bucket').value='nmfs_odp_pifsc/'; updateCloudPathPreview(); document.getElementById('source-bucket').focus(); return false;" style="color: var(--primary);">PIFSC</a> |
+                            <a href="#" onclick="document.getElementById('source-bucket').value='nmfs_odp_afsc/'; updateCloudPathPreview(); document.getElementById('source-bucket').focus(); return false;" style="color: var(--primary);">AFSC</a> |
+                            <a href="#" onclick="document.getElementById('source-bucket').value='nmfs_odp_swfsc/'; updateCloudPathPreview(); document.getElementById('source-bucket').focus(); return false;" style="color: var(--primary);">SWFSC</a> |
+                            <a href="#" onclick="document.getElementById('source-bucket').value='nmfs_odp_nefsc/'; updateCloudPathPreview(); document.getElementById('source-bucket').focus(); return false;" style="color: var(--primary);">NEFSC</a> |
+                            <a href="#" onclick="document.getElementById('source-bucket').value='nmfs_odp_nwfsc/'; updateCloudPathPreview(); document.getElementById('source-bucket').focus(); return false;" style="color: var(--primary);">NWFSC</a>
                         </small>
+                        <div id="source-path-preview" style="display:none; margin-top:6px; padding:8px 12px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; font-family:monospace; font-size:0.9em; color:#166534;">
+                            <strong>Source:</strong> <span id="source-path-preview-text"></span>
+                        </div>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="dest-bucket">Destination Bucket Path</label>
-                        <input type="text" id="dest-bucket" placeholder="nmfs_odp_afsc/destination/path" required>
+                        <input type="text" id="dest-bucket" placeholder="nmfs_odp_afsc/destination/path" oninput="updateCloudPathPreview()" required>
                         <small style="color: #64748b; display: block; margin-top: 4px;">
-                            Quick fill: 
-                            <a href="#" onclick="document.getElementById('dest-bucket').value='nmfs_odp_pifsc/'; document.getElementById('dest-bucket').focus(); return false;" style="color: var(--primary);">PIFSC</a> |
-                            <a href="#" onclick="document.getElementById('dest-bucket').value='nmfs_odp_afsc/'; document.getElementById('dest-bucket').focus(); return false;" style="color: var(--primary);">AFSC</a> |
-                            <a href="#" onclick="document.getElementById('dest-bucket').value='nmfs_odp_swfsc/'; document.getElementById('dest-bucket').focus(); return false;" style="color: var(--primary);">SWFSC</a> |
-                            <a href="#" onclick="document.getElementById('dest-bucket').value='nmfs_odp_nefsc/'; document.getElementById('dest-bucket').focus(); return false;" style="color: var(--primary);">NEFSC</a> |
-                            <a href="#" onclick="document.getElementById('dest-bucket').value='nmfs_odp_nwfsc/'; document.getElementById('dest-bucket').focus(); return false;" style="color: var(--primary);">NWFSC</a>
+                            Quick fill:
+                            <a href="#" onclick="document.getElementById('dest-bucket').value='nmfs_odp_pifsc/'; updateCloudPathPreview(); document.getElementById('dest-bucket').focus(); return false;" style="color: var(--primary);">PIFSC</a> |
+                            <a href="#" onclick="document.getElementById('dest-bucket').value='nmfs_odp_afsc/'; updateCloudPathPreview(); document.getElementById('dest-bucket').focus(); return false;" style="color: var(--primary);">AFSC</a> |
+                            <a href="#" onclick="document.getElementById('dest-bucket').value='nmfs_odp_swfsc/'; updateCloudPathPreview(); document.getElementById('dest-bucket').focus(); return false;" style="color: var(--primary);">SWFSC</a> |
+                            <a href="#" onclick="document.getElementById('dest-bucket').value='nmfs_odp_nefsc/'; updateCloudPathPreview(); document.getElementById('dest-bucket').focus(); return false;" style="color: var(--primary);">NEFSC</a> |
+                            <a href="#" onclick="document.getElementById('dest-bucket').value='nmfs_odp_nwfsc/'; updateCloudPathPreview(); document.getElementById('dest-bucket').focus(); return false;" style="color: var(--primary);">NWFSC</a>
                         </small>
+                        <div id="dest-path-preview" style="display:none; margin-top:6px; padding:8px 12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; font-family:monospace; font-size:0.9em; color:#1e40af;">
+                            <strong>Destination:</strong> <span id="dest-path-preview-text"></span>
+                        </div>
                     </div>
                     
                     <div class="checkbox-group">

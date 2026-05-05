@@ -25,10 +25,12 @@ from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from pathlib import Path
+from datetime import datetime
 import uvicorn
 import webbrowser
 import asyncio
 import os
+import time
 import logging
 
 from .routers import uploads, stats, queue, folders, analytics, settings as settings_router
@@ -80,9 +82,16 @@ async def lifespan(app: FastAPI):
         logger.info("[OK] Scheduler started")
         
         logger.info("[3/3] Preparing browser auto-launch...")
-        # Open browser after startup (only in main worker process)
+        # Clean up stale browser lock older than 60 seconds
+        if os.path.exists(_BROWSER_LOCK):
+            try:
+                age = time.time() - os.path.getmtime(_BROWSER_LOCK)
+                if age > 60:
+                    os.remove(_BROWSER_LOCK)
+            except OSError:
+                pass
+        # Open browser only if not already opened (env var set by cli.py, or lock file)
         if settings.AUTO_OPEN_BROWSER and os.environ.get("BROWSER_OPENED") != "true":
-            os.environ["BROWSER_OPENED"] = "true"
             asyncio.create_task(open_browser())
         
         logger.info("=" * 70)
@@ -115,16 +124,30 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Error during shutdown: {e}")
 
+# File-lock path used to prevent double-open across reload worker restarts (Issue #6)
+_BROWSER_LOCK = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".browser_lock")
+
+
 async def open_browser():
-    """Open the default browser after a short delay."""
-    await asyncio.sleep(2)  # Wait for server to be fully ready
-    url = f"http://localhost:{settings.PORT}"
+    """Open the default browser after a short delay, guarded by a file lock."""
+    if os.path.exists(_BROWSER_LOCK):
+        logger.info("[BROWSER] Lock file present — skipping duplicate open")
+        return
     try:
+        with open(_BROWSER_LOCK, 'w') as f:
+            f.write(str(datetime.now()))
+        await asyncio.sleep(2)  # Wait for server to be fully ready
+        url = f"http://localhost:{settings.PORT}"
         logger.info(f"[BROWSER] Opening browser to {url}")
         webbrowser.open(url)
     except Exception as e:
         logger.warning(f"Could not auto-open browser: {e}")
-        logger.info(f"   Please manually navigate to: {url}")
+        logger.info(f"   Please manually navigate to: http://localhost:{settings.PORT}")
+    finally:
+        try:
+            os.remove(_BROWSER_LOCK)
+        except OSError:
+            pass
 
 # Create FastAPI app
 app = FastAPI(

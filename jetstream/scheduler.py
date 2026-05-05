@@ -8,6 +8,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+_SCHEDULER_POLL_SECONDS = 5
+
 class UploadScheduler:
     """Manages scheduled upload jobs."""
     
@@ -37,7 +39,7 @@ class UploadScheduler:
         logger.info("[OK] Upload scheduler stopped")
         
     async def _scheduler_loop(self):
-        """Main scheduler loop - checks for scheduled jobs every minute."""
+        """Main scheduler loop - checks for scheduled jobs frequently."""
         # Import here to avoid circular imports
         from .services import upload_service, queue_manager
         from . import database
@@ -50,15 +52,14 @@ class UploadScheduler:
                 # Check if database is ready
                 if database.SessionLocal is None:
                     logger.warning("Database not ready, skipping check")
-                    await asyncio.sleep(5)
+                    await asyncio.sleep(_SCHEDULER_POLL_SECONDS)
                     continue
                     
                 await self._check_scheduled_jobs(upload_service, queue_manager)
-                # Sleep for 30 seconds before next check
-                await asyncio.sleep(30)
+                await asyncio.sleep(_SCHEDULER_POLL_SECONDS)
             except Exception as e:
                 logger.error(f"Scheduler error: {str(e)}", exc_info=True)
-                await asyncio.sleep(30)
+                await asyncio.sleep(_SCHEDULER_POLL_SECONDS)
                 
     async def _check_scheduled_jobs(self, upload_service, queue_manager):
         """Check for jobs scheduled to run now and trigger them."""
@@ -70,7 +71,8 @@ class UploadScheduler:
             
         db: Session = database.SessionLocal()
         try:
-            now = datetime.now(timezone.utc)
+            # Keep scheduler comparisons in naive UTC to match DB DateTime storage.
+            now = datetime.utcnow()
             
             # Find jobs scheduled for now or earlier that are still in 'scheduled' status
             scheduled_jobs = db.query(UploadJob).filter(
@@ -135,24 +137,30 @@ class UploadScheduler:
     async def _run_scheduled_upload(self, job_id: str, upload_service, queue_manager):
         """Run a scheduled upload job."""
         from . import database
-        
+        from .services import make_progress_callback
+        from datetime import timedelta
+
         if database.SessionLocal is None:
             logger.error(f"SessionLocal not initialized, cannot run job {job_id}")
             return
-            
+
         db: Session = database.SessionLocal()
         try:
             job = db.query(UploadJob).filter(UploadJob.job_id == job_id).first()
             if not job:
                 logger.error(f"Job {job_id} not found")
                 return
-                
+
+            # Fix #11: job may have been cancelled before scheduler picked it up
+            if job.status == "cancelled":
+                return
+
             # Update status to running
             job.status = "running"
             job.started_at = datetime.now(timezone.utc)
             queue_manager.start_job(job_id)
             db.commit()
-            
+
             # Perform upload
             success, output = await upload_service.upload_to_gcs(
                 job_id=job_id,
@@ -165,17 +173,34 @@ class UploadScheduler:
                 log_path=job.log_path,
                 upload_tool=getattr(job, 'upload_tool', None) or "gcloud",
                 exclude_patterns=job.filters.get('exclude_patterns') if job.filters else None,
-                exclude_folders=job.filters.get('exclude_folders') if job.filters else None
+                exclude_folders=job.filters.get('exclude_folders') if job.filters else None,
+                no_clobber=getattr(job, 'no_clobber', False) or False,
+                custom_command=getattr(job, 'custom_command', None),
+                progress_callback=make_progress_callback(job_id, db),
             )
-            
+
             # Update job status
             if success:
                 job.status = "completed"
                 job.files_uploaded = job.total_files
                 job.bytes_uploaded = job.total_size_bytes
             else:
-                job.status = "failed"
-                job.error_message = "Upload failed - check logs"
+                # Auto-retry logic (Issue #14)
+                retry_count = getattr(job, 'retry_count', 0) or 0
+                max_retries = getattr(job, 'max_auto_retries', 3) or 3
+                if getattr(job, 'auto_retry', False) and retry_count < max_retries:
+                    delay = getattr(job, 'auto_retry_delay_minutes', 30) or 30
+                    job.next_retry_at = datetime.utcnow() + timedelta(minutes=delay)
+                    job.retry_count = retry_count + 1
+                    job.status = "scheduled"
+                    job.scheduled_for = job.next_retry_at
+                    job.error_message = (
+                        f"Auto-retry {retry_count + 1}/{max_retries} "
+                        f"scheduled for {job.next_retry_at.strftime('%H:%M UTC')}"
+                    )
+                else:
+                    job.status = "failed"
+                    job.error_message = "Upload failed - check logs"
             
             # Save upload output to database
             job.upload_output = output

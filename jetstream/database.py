@@ -47,6 +47,17 @@ class UploadJob(Base):
     log_path = Column(String, nullable=True)
     upload_output = Column(Text, nullable=True)  # Store stdout/stderr from upload command
     filters = Column(JSON, nullable=True)  # Store include/exclude patterns
+
+    # Data protection & rsync options (Issue #13)
+    no_clobber = Column(Boolean, default=False)
+    custom_command = Column(Text, nullable=True)  # Optional command override set from TUI
+
+    # Auto-retry configuration (Issue #14)
+    auto_retry = Column(Boolean, default=False)
+    auto_retry_delay_minutes = Column(Integer, default=30)
+    retry_count = Column(Integer, default=0)
+    max_auto_retries = Column(Integer, default=3)
+    next_retry_at = Column(DateTime, nullable=True)
     
     def to_dict(self):
         """Convert to dictionary."""
@@ -89,7 +100,13 @@ class UploadJob(Base):
             "error_message": self.error_message,
             "log_path": self.log_path,
             "upload_output": self.upload_output,
-            "filters": self.filters
+            "filters": self.filters,
+            "no_clobber": self.no_clobber or False,
+            "auto_retry": self.auto_retry or False,
+            "auto_retry_delay_minutes": self.auto_retry_delay_minutes or 30,
+            "retry_count": self.retry_count or 0,
+            "max_auto_retries": self.max_auto_retries or 3,
+            "next_retry_at": format_dt(self.next_retry_at),
         }
     
     def _calculate_duration(self):
@@ -182,6 +199,56 @@ def _run_migrations():
             print("✓ Migration completed: cleared column added")
             migrations_run = True
         
+        # Migration: Add no_clobber column (Issue #13)
+        if 'no_clobber' not in columns:
+            print("⚙ Running migration: Adding 'no_clobber' column...")
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE upload_jobs ADD COLUMN no_clobber BOOLEAN DEFAULT 0"))
+                conn.commit()
+            print("✓ Migration completed: no_clobber column added")
+            migrations_run = True
+
+        # Migration: Add auto_retry columns (Issue #14)
+        if 'auto_retry' not in columns:
+            print("⚙ Running migration: Adding 'auto_retry' column...")
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE upload_jobs ADD COLUMN auto_retry BOOLEAN DEFAULT 0"))
+                conn.commit()
+            print("✓ Migration completed: auto_retry column added")
+            migrations_run = True
+
+        if 'auto_retry_delay_minutes' not in columns:
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE upload_jobs ADD COLUMN auto_retry_delay_minutes INTEGER DEFAULT 30"))
+                conn.commit()
+            migrations_run = True
+
+        if 'retry_count' not in columns:
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE upload_jobs ADD COLUMN retry_count INTEGER DEFAULT 0"))
+                conn.commit()
+            migrations_run = True
+
+        if 'max_auto_retries' not in columns:
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE upload_jobs ADD COLUMN max_auto_retries INTEGER DEFAULT 3"))
+                conn.commit()
+            migrations_run = True
+
+        if 'next_retry_at' not in columns:
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE upload_jobs ADD COLUMN next_retry_at DATETIME"))
+                conn.commit()
+            migrations_run = True
+
+        if 'custom_command' not in columns:
+            print("⚙ Running migration: Adding 'custom_command' column...")
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE upload_jobs ADD COLUMN custom_command TEXT"))
+                conn.commit()
+            print("✓ Migration completed: custom_command column added")
+            migrations_run = True
+
         if not migrations_run:
             print("✓ Database schema is up to date")
             

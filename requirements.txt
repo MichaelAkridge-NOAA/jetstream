@@ -26,5 +26,8 @@ pywin32>=305; platform_system == "Windows"
 # Async support
 aiofiles>=23.2.0
 
+# System metrics (TUI host dashboard)
+psutil>=6.0.0
+
 # Environment
 python-dotenv>=1.0.0

@@ -7,6 +7,10 @@ document.addEventListener('DOMContentLoaded', function() {
     loadStats();
     loadJobs();
 
+    // Issue #8: live GCS destination preview
+    document.getElementById('gcs-destination').addEventListener('input', updateGCSPreview);
+    updateGCSPreview();
+
     const interval = getRefreshInterval();
     setInterval(function() {
         loadStats();
@@ -53,7 +57,13 @@ document.getElementById('upload-form').addEventListener('submit', async function
         upload_tool: document.getElementById('upload-tool').value,
         scheduled_for: scheduled_for,
         exclude_folders: excludeFolders.length > 0 ? excludeFolders : null,
-        exclude_patterns: excludePatterns.length > 0 ? excludePatterns : null
+        exclude_patterns: excludePatterns.length > 0 ? excludePatterns : null,
+        // Issue #13: data protection options
+        no_clobber: document.getElementById('no-clobber').checked,
+        // Issue #14: auto-retry options
+        auto_retry: document.getElementById('auto-retry').checked,
+        auto_retry_delay_minutes: parseInt(document.getElementById('auto-retry-delay').value) || 30,
+        max_auto_retries: parseInt(document.getElementById('max-auto-retries').value) || 3,
     };
 
     const submitBtn = e.target.querySelector('button[type="submit"]');
@@ -248,4 +258,29 @@ function clearExcludePatterns() {
     document.getElementById('exclude-folders').value = '';
     document.getElementById('exclude-patterns').value = '';
     showToast('Cleared all exclude patterns', 'info');
+}
+
+// ===== GCS PATH PREVIEW (Issue #8) =====
+
+function updateGCSPreview() {
+    const dest = document.getElementById('gcs-destination').value.trim();
+    const previewDiv = document.getElementById('gcs-path-preview');
+    const previewText = document.getElementById('gcs-path-preview-text');
+
+    if (!dest) {
+        previewDiv.style.display = 'none';
+        return;
+    }
+
+    let normalized = dest.startsWith('gs://') ? dest.slice(5) : dest;
+    normalized = normalized.replace(/\/+$/, '');
+    previewText.textContent = 'gs://' + normalized + '/';
+    previewDiv.style.display = 'block';
+}
+
+// ===== AUTO-RETRY TOGGLE (Issue #14) =====
+
+function toggleAutoRetryOptions() {
+    const el = document.getElementById('auto-retry-options');
+    el.style.display = document.getElementById('auto-retry').checked ? 'block' : 'none';
 }
