@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "noaa-jetstream"
-version = "0.1.14"
+version = "0.1.15"
 description = "JetStream: Cloud Data Manager - A comprehensive tool for managing local-to-cloud uploads with queue management, statistics, and folder analysis"
 readme = "README.md"
 requires-python = ">=3.9"
