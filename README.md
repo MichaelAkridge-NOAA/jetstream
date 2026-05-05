@@ -18,6 +18,9 @@ A comprehensive web-based application for managing Google Cloud Storage uploads 
 |-----------|-------------|----------|
 | ![Home](https://github.com/MichaelAkridge-NOAA/jetstream/raw/main/docs/screenshot_home.png) | ![Uploads](https://github.com/MichaelAkridge-NOAA/jetstream/raw/main/docs/screenshot_uploads.png) | ![Analytics](https://github.com/MichaelAkridge-NOAA/jetstream/raw/main/docs/screenshot_analytics.png) |
 
+## **Terminal UI (TUI)** Screenshot
+![TUI](./docs/tui_01.gif)
+
 ### Prerequisites
 
 - **Python 3.9+**
@@ -123,6 +126,8 @@ JetStream ships a full terminal dashboard â€” think **htop + ranger + gsutil** â
 | Dashboard | Upload Jobs | Analytics |
 |-----------|-------------|----------|
 | ![Home](https://github.com/MichaelAkridge-NOAA/jetstream/raw/main/docs/tui_s01.png) | ![Uploads](https://github.com/MichaelAkridge-NOAA/jetstream/raw/main/docs/tui_s02.png) | ![Analytics](https://github.com/MichaelAkridge-NOAA/jetstream/raw/main/docs/tui_s03.png) |
+
+![TUI](./docs/tui_01.gif)
 
 ### Launch
 
