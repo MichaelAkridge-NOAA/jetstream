@@ -50,6 +50,7 @@ class UploadJob(Base):
 
     # Data protection & rsync options (Issue #13)
     no_clobber = Column(Boolean, default=False)
+    custom_command = Column(Text, nullable=True)  # Optional command override set from TUI
 
     # Auto-retry configuration (Issue #14)
     auto_retry = Column(Boolean, default=False)
@@ -238,6 +239,14 @@ def _run_migrations():
             with engine.connect() as conn:
                 conn.execute(text("ALTER TABLE upload_jobs ADD COLUMN next_retry_at DATETIME"))
                 conn.commit()
+            migrations_run = True
+
+        if 'custom_command' not in columns:
+            print("⚙ Running migration: Adding 'custom_command' column...")
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE upload_jobs ADD COLUMN custom_command TEXT"))
+                conn.commit()
+            print("✓ Migration completed: custom_command column added")
             migrations_run = True
 
         if not migrations_run:

@@ -173,6 +173,7 @@ class UploadScheduler:
                 exclude_patterns=job.filters.get('exclude_patterns') if job.filters else None,
                 exclude_folders=job.filters.get('exclude_folders') if job.filters else None,
                 no_clobber=getattr(job, 'no_clobber', False) or False,
+                custom_command=getattr(job, 'custom_command', None),
                 progress_callback=make_progress_callback(job_id, db),
             )
 

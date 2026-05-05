@@ -42,6 +42,7 @@ dependencies = [
   "google-auth-oauthlib>=1.2.0",
   "pyshortcuts>=1.9.0",
   "pywin32>=305; platform_system=='Windows'",
+  "textual>=0.80.0",
 ]
 
 [project.optional-dependencies]
@@ -50,6 +51,7 @@ dev = [
   "pytest-asyncio>=0.21.0",
   "black>=23.0.0",
   "flake8>=6.0.0",
+  "textual-dev>=1.0.0",
 ]
 
 [project.urls]
@@ -61,11 +63,12 @@ Repository = "https://github.com/MichaelAkridge-NOAA/jetstream"
 [project.scripts]
 jetstream = "jetstream.cli:main"
 jetstream-server = "jetstream.cli:main"
+jetstream-tui = "jetstream.tui.cli:main"
 jetstream-create-shortcuts = "jetstream.shortcuts:main_create"
 jetstream-remove-shortcuts = "jetstream.shortcuts:main_remove"
 
 [tool.setuptools]
-packages = ["jetstream", "jetstream.routers"]
+packages = ["jetstream", "jetstream.routers", "jetstream.tui", "jetstream.tui.screens", "jetstream.tui.widgets"]
 
 [tool.setuptools.package-data]
 jetstream = [

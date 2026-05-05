@@ -10,6 +10,7 @@ A comprehensive web-based application for managing Google Cloud Storage uploads 
 - **Cloud Bucket Analysis**
 - **File Filtering**
 - **Web Dashboard**
+- **Terminal UI (TUI)** — full-featured htop-style dashboard for terminals and remote sessions
 
 ## Screenshots
 
@@ -112,7 +113,100 @@ python -m uvicorn jetstream.main:app --reload
 
 The application will start on **http://localhost:8000** and automatically open in your default browser.
 
-### Desktop Shortcuts
+---
+
+## Terminal UI (TUI)
+
+JetStream ships a full terminal dashboard — think **htop + ranger + gsutil** — that runs in any terminal or SSH session without a browser.
+
+### Launch
+
+```bash
+# If installed via pip
+jetstream-tui
+
+# From source
+python -m jetstream.tui.cli
+```
+
+### Screens & Key Bindings
+
+#### Dashboard (main screen)
+The dashboard opens automatically and shows a live two-panel layout:
+- **Left (60%)** — scrollable job table with status icons, progress bars, tool, size, and destination
+- **Right (40%)** — selected job detail: metadata card + live log tail
+
+| Key | Action |
+|-----|--------|
+| `R` | Refresh job list |
+| `N` | New upload job (opens form) |
+| `B` | Open GCS bucket browser |
+| `P` | Pause / resume queue |
+| `C` | Cancel selected job |
+| `T` | Retry selected job |
+| `X` | Clear all completed jobs |
+| `D` | Delete selected job |
+| `F1` | Show all jobs |
+| `F2` | Show running jobs only |
+| `F3` | Show failed jobs only |
+| `Ctrl+C` | Quit |
+
+The queue status bar at the top shows live counts (Running / Queued / Done / Failed / Scheduled), total bytes uploaded, and a **PAUSED** indicator when the queue is paused.
+
+#### New Job Form (`N`)
+A guided form for creating upload jobs:
+
+- Source path (local folder)
+- GCS destination (`gs://bucket/path`)
+- Upload tool (`gcloud` / `gsutil` / `rclone`)
+- Threads, dry-run, recursive, no-clobber, split-folder toggles
+- Auto-retry settings and exclude patterns
+- Optional scheduled start time
+
+Press **Analyze** to scan the source folder before submitting.
+
+#### Bucket Browser (`B`)
+An interactive ranger-style GCS browser:
+
+- Type a bucket name or full `gs://bucket/prefix/path` URI and press **Enter** or **Browse**
+- Navigate into virtual folders with **Enter**, go up with **Backspace**
+- Columns: type (📁/📄), name, size, last modified
+
+| Key | Action |
+|-----|--------|
+| `Enter` | Drill into prefix / folder |
+| `Backspace` | Go up one level |
+| `R` | Refresh current listing |
+| `Esc` | Back to dashboard |
+
+#### Bucket Analytics (`Summary` button in browser)
+A full-screen analytics view for the current bucket path:
+
+| Section | Content |
+|---------|---------|
+| **Overview** | Total files, total size, average size, top file type, folder count |
+| **Top Folders by Size** | Horizontal Unicode bar chart, size, count, % of total |
+| **Top Folders by File Count** | Count-sorted bar chart |
+| **File Type Distribution** | Extension breakdown (`.tif`, `.csv`, etc.) |
+| **Size Distribution** | `<1 KB / 1 KB–1 MB / 1–100 MB / >100 MB` buckets |
+| **Activity Timeline** | Files-modified-per-month bars + sparkline trend |
+| **Newest / Oldest Files** | 8 most-recently and 8 least-recently modified files |
+
+The analytics scan is scoped to whatever prefix you have navigated to in the browser (not the whole bucket unless you're at root). A scan cap of 5,000 objects applies; a warning is shown if hit.
+
+Press `R` to re-scan, `Esc` to return to the browser.
+
+### Requirements
+
+The TUI requires `textual>=0.80.0` (installed automatically with `noaa-jetstream`). For development extras:
+
+```bash
+pip install "noaa-jetstream[dev]"
+# or
+uv pip install -e ".[dev]"
+```
+
+---
 
 Desktop and Start Menu shortcuts are included with the default install. The shortcut will automatically use the JetStream icon (`icon.ico`) when created.
 

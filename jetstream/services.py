@@ -512,7 +512,8 @@ class UploadService:
                            dry_run: bool = False, recursive: bool = True,
                            threads: int = 4, log_path: str = None, upload_tool: str = "gcloud",
                            exclude_patterns: list = None, exclude_folders: list = None,
-                           no_clobber: bool = False, progress_callback: Callable = None) -> bool:
+                           no_clobber: bool = False, progress_callback: Callable = None,
+                           custom_command: str = None) -> bool:
         """Upload files to Google Cloud Storage using gcloud storage or gsutil."""
         
         # Strip bucket name from destination_path if it starts with it
@@ -623,6 +624,8 @@ class UploadService:
                 shell_cmd_parts.append(arg)
         
         shell_cmd = ' '.join(shell_cmd_parts)
+        if custom_command:
+            shell_cmd = custom_command
         print(f"🚀 Executing: {shell_cmd}")
         
         try:
