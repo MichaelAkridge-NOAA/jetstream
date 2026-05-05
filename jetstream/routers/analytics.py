@@ -1,10 +1,13 @@
 """Analytics endpoints for upload statistics and cloud storage analysis."""
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
 from typing import Dict, List
 from datetime import datetime, timezone, timedelta
+import csv
+import io
 
 from ..database import get_db, UploadJob
 from ..models import CloudAnalysisRequest
@@ -153,6 +156,51 @@ async def get_top_destinations(limit: int = 10, db: Session = Depends(get_db)):
             for d in destinations
         ]
     }
+
+@router.get("/export-csv")
+async def export_jobs_csv(db: Session = Depends(get_db)):
+    """Export all upload jobs as a CSV file (Issue #3)."""
+    jobs = db.query(UploadJob).order_by(UploadJob.created_at.desc()).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "job_id", "friendly_name", "status", "source_path", "destination",
+        "total_files", "total_size_gb", "files_uploaded", "bytes_uploaded_gb",
+        "created_at", "completed_at", "duration_seconds",
+        "dry_run", "upload_tool", "retry_count", "error_message"
+    ])
+    for job in jobs:
+        dest = f"gs://{job.destination_bucket}/{job.destination_path or ''}"
+        dur = job._calculate_duration()
+        writer.writerow([
+            job.job_id,
+            job.friendly_name or "",
+            job.status,
+            job.source_path,
+            dest,
+            job.total_files or 0,
+            round((job.total_size_bytes or 0) / (1024 ** 3), 4),
+            job.files_uploaded or 0,
+            round((job.bytes_uploaded or 0) / (1024 ** 3), 4),
+            job.created_at.isoformat() if job.created_at else "",
+            job.completed_at.isoformat() if job.completed_at else "",
+            round(dur, 1) if dur else "",
+            job.dry_run,
+            job.upload_tool or "gcloud",
+            getattr(job, 'retry_count', 0) or 0,
+            job.error_message or "",
+        ])
+
+    output.seek(0)
+    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+    filename = f"jetstream_jobs_{ts}.csv"
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
 
 @router.get("/job-type-breakdown")
 async def get_job_type_breakdown(db: Session = Depends(get_db)):

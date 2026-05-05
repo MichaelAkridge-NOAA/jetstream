@@ -246,9 +246,10 @@ function renderJobCard(job, options) {
     var showProgress = options.showProgress !== false;
     var clickable = options.clickable !== false;
 
+    var jobTitle = job.friendly_name || (job.job_id.substring(0, 8) + '...');
     return '<div class="job-item" ' + (clickable ? 'onclick="showJobDetails(\'' + job.job_id + '\')"' : '') + ' style="' + (clickable ? 'cursor: pointer;' : '') + '">' +
         '<div class="job-header">' +
-            '<span class="job-id">' + job.job_id.substring(0, 8) + '...</span>' +
+            '<span class="job-id" title="' + job.job_id + '">' + escapeHtml(jobTitle) + '</span>' +
             '<div class="job-actions">' +
                 '<span class="status-badge status-' + job.status + '">' + job.status.toUpperCase() + '</span>' +
                 (showDelete ? '<button class="btn-delete" onclick="event.stopPropagation(); deleteJob(\'' + job.job_id + '\')" title="Delete Job">\u2715</button>' : '') +
@@ -257,20 +258,22 @@ function renderJobCard(job, options) {
         '<div class="job-badges">' +
             '<span class="job-badge badge-rsync">\ud83d\udce6 RSYNC</span>' +
             (job.dry_run ? '<span class="job-badge badge-dry-run">\ud83d\udc41\ufe0f DRY-RUN</span>' : '') +
+            (job.no_clobber ? '<span class="job-badge badge-rsync">\ud83d\udee1\ufe0f NO-CLOBBER</span>' : '') +
             (job.scheduled_for ? '<span class="job-badge badge-scheduled">\u23f0 SCHEDULED</span>' : '') +
             '<span class="job-badge badge-local">\ud83d\udcbb LOCAL\u2192CLOUD</span>' +
             (job.split_by_folder ? '<span class="job-badge badge-split">\ud83d\udcc1 SPLIT</span>' : '') +
             (job.recursive ? '<span class="job-badge badge-rsync">\ud83d\udd04 RECURSIVE</span>' : '') +
+            (job.auto_retry && job.retry_count > 0 ? '<span class="job-badge badge-scheduled">\ud83d\udd04 RETRY ' + job.retry_count + '</span>' : '') +
         '</div>' +
         (job.scheduled_for && job.status === 'scheduled' ? '<div style="color: #6b21a8; font-size: 0.85em; margin: 8px 0;">\u23f0 Scheduled for: ' + formatDate(job.scheduled_for) + '</div>' : '') +
         (showProgress ? '<div class="progress-bar"><div class="progress-fill" style="width: ' + (job.progress_percent || 0) + '%">' + (job.progress_percent || 0) + '%</div></div>' : '') +
         '<div class="job-details">' +
-            '<div><strong>Source:</strong> ' + ((job.source_path || '').split(/[\\\/]/).pop()) + '</div>' +
+            '<div><strong>Source:</strong> ' + escapeHtml((job.source_path || '').split(/[\\\/]/).pop()) + '</div>' +
             '<div><strong>Files:</strong> ' + (job.files_uploaded || 0) + ' / ' + (job.total_files || 0) + '</div>' +
-            '<div><strong>Bucket:</strong> ' + (job.destination_bucket || 'N/A') + '</div>' +
+            '<div><strong>Bucket:</strong> ' + escapeHtml(job.destination_bucket || 'N/A') + '</div>' +
             '<div><strong>Size:</strong> ' + formatBytes(job.total_size_bytes) + '</div>' +
             '<div><strong>Created:</strong> ' + new Date(job.created_at).toLocaleDateString() + '</div>' +
-            '<div><strong>Duration:</strong> ' + formatDuration(job.started_at || job.created_at, job.completed_at) + '</div>' +
+            '<div><strong>Duration:</strong> ' + formatDuration(job.duration_seconds || (job.started_at ? undefined : null) || job.started_at, job.duration_seconds ? undefined : job.completed_at) + '</div>' +
         '</div>' +
     '</div>';
 }
@@ -374,6 +377,7 @@ async function showJobDetails(jobId) {
             if (job.dry_run) command += ' --dry-run';
             if (job.recursive) command += ' --recursive';
             command += ' --checksums-only';
+            if (job.no_clobber) command += ' --no-clobber';
         }
         
         // Add exclude patterns to command preview
@@ -404,6 +408,9 @@ async function showJobDetails(jobId) {
         html += '<div class="detail-section"><h3>Command</h3><div class="detail-value" style="word-break: break-all; font-family: monospace; font-size: 0.85em;">' + escapeHtml(command) + '</div></div>';
 
         html += '<div class="detail-section"><h3>Job Information</h3><div class="detail-grid">';
+        if (job.friendly_name) {
+            html += '<div class="detail-item"><span class="detail-label">Job Name</span><span class="detail-text">' + escapeHtml(job.friendly_name) + '</span></div>';
+        }
         html += '<div class="detail-item"><span class="detail-label">Job ID</span><span class="detail-text">' + job.job_id + '</span></div>';
         html += '<div class="detail-item"><span class="detail-label">Created</span><span class="detail-text">' + formatDate(job.created_at) + '</span></div>';
         html += '<div class="detail-item"><span class="detail-label">Started</span><span class="detail-text">' + formatDate(job.started_at) + '</span></div>';

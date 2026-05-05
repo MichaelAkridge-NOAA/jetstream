@@ -64,13 +64,19 @@
                         <input type="text" id="gcs-destination" placeholder="nmfs_odp_pifsc/PIFSC/ESD/ARP/data_management" required>
                         <small style="color: #64748b; display: block; margin-top: 4px;">
                             Paste full path from GCS console (e.g., nmfs_odp_pifsc/PIFSC/ESD/ARP/data_management)<br>
-                            Quick fill: 
-                            <a href="#" onclick="document.getElementById('gcs-destination').value='nmfs_odp_pifsc/'; document.getElementById('gcs-destination').focus(); return false;" style="color: var(--primary);">PIFSC</a> |
-                            <a href="#" onclick="document.getElementById('gcs-destination').value='nmfs_odp_afsc/'; document.getElementById('gcs-destination').focus(); return false;" style="color: var(--primary);">AFSC</a> |
-                            <a href="#" onclick="document.getElementById('gcs-destination').value='nmfs_odp_swfsc/'; document.getElementById('gcs-destination').focus(); return false;" style="color: var(--primary);">SWFSC</a> |
-                            <a href="#" onclick="document.getElementById('gcs-destination').value='nmfs_odp_nefsc/'; document.getElementById('gcs-destination').focus(); return false;" style="color: var(--primary);">NEFSC</a> |
-                            <a href="#" onclick="document.getElementById('gcs-destination').value='nmfs_odp_nwfsc/'; document.getElementById('gcs-destination').focus(); return false;" style="color: var(--primary);">NWFSC</a>
+                            Quick fill:
+                            <a href="#" onclick="document.getElementById('gcs-destination').value='nmfs_odp_pifsc/'; updateGCSPreview(); document.getElementById('gcs-destination').focus(); return false;" style="color: var(--primary);">PIFSC</a> |
+                            <a href="#" onclick="document.getElementById('gcs-destination').value='nmfs_odp_afsc/'; updateGCSPreview(); document.getElementById('gcs-destination').focus(); return false;" style="color: var(--primary);">AFSC</a> |
+                            <a href="#" onclick="document.getElementById('gcs-destination').value='nmfs_odp_swfsc/'; updateGCSPreview(); document.getElementById('gcs-destination').focus(); return false;" style="color: var(--primary);">SWFSC</a> |
+                            <a href="#" onclick="document.getElementById('gcs-destination').value='nmfs_odp_nefsc/'; updateGCSPreview(); document.getElementById('gcs-destination').focus(); return false;" style="color: var(--primary);">NEFSC</a> |
+                            <a href="#" onclick="document.getElementById('gcs-destination').value='nmfs_odp_nwfsc/'; updateGCSPreview(); document.getElementById('gcs-destination').focus(); return false;" style="color: var(--primary);">NWFSC</a>
                         </small>
+                        <!-- Issue #8: Live destination path preview -->
+                        <div id="gcs-path-preview" style="display:none; margin-top:8px; padding:8px 12px;
+                             background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px;
+                             font-family:monospace; font-size:0.9em; color:#166534;">
+                            <strong>Destination:</strong> <span id="gcs-path-preview-text"></span>
+                        </div>
                     </div>
                     
                     <div class="checkbox-group">
@@ -139,6 +145,49 @@
                                 </div>
                             </div>
                             
+                            <!-- Data Protection & Rsync Options (Issue #13) -->
+                            <div style="margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+                                <h4 style="font-size: 0.9em; color: #475569; margin: 0 0 10px 0;">🛡️ Data Protection &amp; Rsync Options</h4>
+
+                                <div class="checkbox-group">
+                                    <input type="checkbox" id="no-clobber">
+                                    <label for="no-clobber">
+                                        No-Clobber — skip files that already exist in bucket
+                                        <small style="color: #64748b; display: block; margin-top: 2px; font-weight: normal;">
+                                            Adds <code>--no-clobber</code> (gcloud only). Protects existing cloud data from overwrite.
+                                        </small>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Auto-Retry Options (Issue #14) -->
+                            <div style="margin-top: 15px;">
+                                <div class="checkbox-group">
+                                    <input type="checkbox" id="auto-retry" onchange="toggleAutoRetryOptions()">
+                                    <label for="auto-retry">
+                                        Auto-Retry failed jobs
+                                        <small style="color: #64748b; display: block; margin-top: 2px; font-weight: normal;">
+                                            Automatically reschedule the job if it fails.
+                                        </small>
+                                    </label>
+                                </div>
+
+                                <div id="auto-retry-options" style="display:none; margin-top: 10px; margin-left: 24px; padding: 10px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                                        <div class="form-group" style="margin: 0; flex: 1; min-width: 140px;">
+                                            <label for="auto-retry-delay" style="font-size: 0.9em;">Retry delay (minutes)</label>
+                                            <input type="number" id="auto-retry-delay" value="30" min="1" max="1440"
+                                                   style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; margin-top: 4px;">
+                                        </div>
+                                        <div class="form-group" style="margin: 0; flex: 1; min-width: 140px;">
+                                            <label for="max-auto-retries" style="font-size: 0.9em;">Maximum retries</label>
+                                            <input type="number" id="max-auto-retries" value="3" min="1" max="10"
+                                                   style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; margin-top: 4px;">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Help Section -->
                             <details style="margin-top: 15px; padding: 10px; background: #f1f5f9; border-radius: 6px;">
                                 <summary style="cursor: pointer; color: #475569; font-weight: 500;">📖 Pattern Help & Examples</summary>

@@ -6,6 +6,7 @@ from typing import Optional, List, Dict
 from datetime import datetime, timezone
 import asyncio
 import subprocess
+import threading
 import uuid
 
 # Lazy import for Google Cloud Storage to avoid startup crashes
@@ -226,12 +227,15 @@ async def start_cloud_transfer(request: CloudTransferRequest, background_tasks: 
     if request.dry_run:
         cmd.append("--dry-run")
     
-    # Add exclude patterns
+    cmd.append("--checksums-only")
+
+    # Combine exclude patterns into a single regex (gcloud accepts one --exclude flag)
     if request.exclude_patterns:
-        for pattern in request.exclude_patterns:
-            if pattern.strip():
-                cmd.append(f"--exclude={pattern.strip()}")
-    
+        patterns = [p.strip() for p in request.exclude_patterns if p.strip()]
+        if patterns:
+            combined = "|".join(f"({p})" for p in patterns)
+            cmd.append(f"--exclude={combined}")
+
     cmd.extend([source, dest])
     
     # Build display command
@@ -265,42 +269,55 @@ async def run_cloud_transfer(job_id: str, cmd: list):
     """Execute the cloud transfer command."""
     try:
         def run_sync():
-            # Build shell command with proper quoting
-            shell_cmd_parts = []
-            for arg in cmd:
-                if ' ' in arg or '=' in arg:
-                    shell_cmd_parts.append(f'"{arg}"')
-                else:
-                    shell_cmd_parts.append(arg)
-            shell_cmd = ' '.join(shell_cmd_parts)
-            
-            print(f"🚀 Cloud Transfer: {shell_cmd}")
-            
+            print(f"Cloud Transfer: {' '.join(cmd)}")
+
             process = subprocess.Popen(
-                shell_cmd,
-                shell=True,
+                cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True
             )
-            
-            stdout, stderr = process.communicate()
-            return process.returncode, stdout, stderr
-        
+
+            stdout_lines = []
+            stderr_lines = []
+
+            def _read_stdout():
+                for line in process.stdout:
+                    stdout_lines.append(line)
+
+            def _read_stderr():
+                for line in process.stderr:
+                    stderr_lines.append(line)
+                    print(line.rstrip())
+
+            t1 = threading.Thread(target=_read_stdout, daemon=True)
+            t2 = threading.Thread(target=_read_stderr, daemon=True)
+            t1.start()
+            t2.start()
+            t1.join()
+            t2.join()
+            process.wait()
+
+            return process.returncode, "".join(stdout_lines), "".join(stderr_lines)
+
         returncode, stdout, stderr = await asyncio.to_thread(run_sync)
-        
-        output = f"STDOUT:\n{stdout}\n\nSTDERR:\n{stderr}"
-        
+
+        output = ""
+        if stdout:
+            output += f"STDOUT:\n{stdout}\n\n"
+        if stderr:
+            output += f"STDERR:\n{stderr}"
+
         if returncode == 0:
             cloud_transfer_jobs[job_id]["status"] = "completed"
             cloud_transfer_jobs[job_id]["output"] = output
         else:
             cloud_transfer_jobs[job_id]["status"] = "failed"
             cloud_transfer_jobs[job_id]["output"] = output
-            cloud_transfer_jobs[job_id]["error"] = stderr or "Unknown error"
-        
+            cloud_transfer_jobs[job_id]["error"] = stderr.strip() or "Unknown error"
+
         cloud_transfer_jobs[job_id]["completed_at"] = datetime.now(timezone.utc).isoformat()
-        
+
     except Exception as e:
         cloud_transfer_jobs[job_id]["status"] = "failed"
         cloud_transfer_jobs[job_id]["error"] = str(e)

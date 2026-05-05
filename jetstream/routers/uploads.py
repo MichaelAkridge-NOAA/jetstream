@@ -4,7 +4,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import os
 
 from ..database import get_db, UploadJob
@@ -12,7 +12,8 @@ from ..models import (
     UploadRequest, UploadResponse, JobStatusResponse, JobStatus
 )
 from ..services import (
-    FileFilter, FolderAnalyzer, upload_service, queue_manager, generate_friendly_job_name
+    FileFilter, FolderAnalyzer, upload_service, queue_manager, generate_friendly_job_name,
+    make_progress_callback
 )
 
 router = APIRouter()
@@ -33,7 +34,11 @@ async def process_upload_job(job_id: str, db_path: str):
         job = db.query(UploadJob).filter(UploadJob.job_id == job_id).first()
         if not job:
             return
-        
+
+        # Fix #11: job may have been cancelled before background task ran
+        if job.status == "cancelled":
+            return
+
         # Check if can start (queue management)
         if not queue_manager.can_start_job():
             job.status = "queued"
@@ -59,17 +64,33 @@ async def process_upload_job(job_id: str, db_path: str):
             log_path=job.log_path,
             upload_tool=getattr(job, 'upload_tool', None) or "gcloud",
             exclude_patterns=job.filters.get('exclude_patterns') if job.filters else None,
-            exclude_folders=job.filters.get('exclude_folders') if job.filters else None
+            exclude_folders=job.filters.get('exclude_folders') if job.filters else None,
+            no_clobber=getattr(job, 'no_clobber', False) or False,
+            progress_callback=make_progress_callback(job_id, db),
         )
-        
+
         # Update job status
         if success:
             job.status = "completed"
             job.files_uploaded = job.total_files
             job.bytes_uploaded = job.total_size_bytes
         else:
-            job.status = "failed"
-            job.error_message = "Upload failed - check logs"
+            # Auto-retry logic (Issue #14)
+            retry_count = getattr(job, 'retry_count', 0) or 0
+            max_retries = getattr(job, 'max_auto_retries', 3) or 3
+            if getattr(job, 'auto_retry', False) and retry_count < max_retries:
+                delay = getattr(job, 'auto_retry_delay_minutes', 30) or 30
+                job.next_retry_at = datetime.now(timezone.utc) + timedelta(minutes=delay)
+                job.retry_count = retry_count + 1
+                job.status = "scheduled"
+                job.scheduled_for = job.next_retry_at
+                job.error_message = (
+                    f"Auto-retry {retry_count + 1}/{max_retries} "
+                    f"scheduled for {job.next_retry_at.strftime('%H:%M UTC')}"
+                )
+            else:
+                job.status = "failed"
+                job.error_message = "Upload failed - check logs"
         
         # Save upload output to database
         job.upload_output = output
@@ -94,6 +115,11 @@ async def process_upload_job(job_id: str, db_path: str):
             job.completed_at = datetime.now(timezone.utc)
             db.commit()
         queue_manager.complete_job(job_id)
+        # Ensure the next waiting job is not left stuck when this one fails
+        next_job_id = queue_manager.get_next_job()
+        if next_job_id:
+            import asyncio
+            asyncio.create_task(process_upload_job(next_job_id, db_path))
     finally:
         db.close()
 
@@ -163,7 +189,11 @@ async def create_upload(
                 filters={
                     'exclude_patterns': request.exclude_patterns,
                     'exclude_folders': request.exclude_folders
-                }
+                },
+                no_clobber=request.no_clobber,
+                auto_retry=request.auto_retry,
+                auto_retry_delay_minutes=request.auto_retry_delay_minutes,
+                max_auto_retries=request.max_auto_retries,
             )
             db.add(job)
             db.commit()
@@ -225,7 +255,11 @@ async def create_upload(
             filters={
                 'exclude_patterns': request.exclude_patterns,
                 'exclude_folders': request.exclude_folders
-            }
+            },
+            no_clobber=request.no_clobber,
+            auto_retry=request.auto_retry,
+            auto_retry_delay_minutes=request.auto_retry_delay_minutes,
+            max_auto_retries=request.max_auto_retries,
         )
         db.add(job)
         db.commit()

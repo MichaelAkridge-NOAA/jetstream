@@ -29,6 +29,14 @@ class UploadRequest(BaseModel):
     
     exclude_patterns: Optional[List[str]] = Field(None, description="Regex patterns for files to exclude")
     exclude_folders: Optional[List[str]] = Field(None, description="Folder names to exclude")
+
+    # Data protection & rsync options (Issue #13)
+    no_clobber: bool = Field(False, description="Skip files already existing in bucket (gcloud --no-clobber, gcloud only)")
+
+    # Auto-retry configuration (Issue #14)
+    auto_retry: bool = Field(False, description="Automatically retry failed jobs")
+    auto_retry_delay_minutes: int = Field(30, description="Minutes to wait before auto-retry")
+    max_auto_retries: int = Field(3, description="Maximum number of auto-retry attempts")
     
     # Computed properties for backward compatibility
     destination_bucket: Optional[str] = None
@@ -104,6 +112,7 @@ class JobStatusResponse(BaseModel):
     """Response model for job status."""
     id: int
     job_id: str
+    friendly_name: Optional[str] = None
     status: JobStatus
     source_path: str
     destination_bucket: str
@@ -131,6 +140,16 @@ class JobStatusResponse(BaseModel):
     log_path: Optional[str]
     upload_output: Optional[str] = None
     filters: Optional[dict] = None
+
+    # Data protection & rsync options (Issue #13)
+    no_clobber: bool = False
+
+    # Auto-retry fields (Issue #14)
+    auto_retry: bool = False
+    auto_retry_delay_minutes: int = 30
+    retry_count: int = 0
+    max_auto_retries: int = 3
+    next_retry_at: Optional[datetime] = None
 
 class FolderAnalysisRequest(BaseModel):
     """Request model for folder analysis."""

@@ -28,6 +28,32 @@ function normalizeGcsPath(path) {
     return 'gs://' + path;
 }
 
+// ===== PATH PREVIEW =====
+
+function updateCloudPathPreview() {
+    const src = document.getElementById('source-bucket').value.trim();
+    const dst = document.getElementById('dest-bucket').value.trim();
+
+    const srcDiv = document.getElementById('source-path-preview');
+    const dstDiv = document.getElementById('dest-path-preview');
+
+    if (src) {
+        const norm = src.startsWith('gs://') ? src.replace(/\/+$/, '') : 'gs://' + src.replace(/\/+$/, '');
+        document.getElementById('source-path-preview-text').textContent = norm + '/';
+        srcDiv.style.display = 'block';
+    } else {
+        srcDiv.style.display = 'none';
+    }
+
+    if (dst) {
+        const norm = dst.startsWith('gs://') ? dst.replace(/\/+$/, '') : 'gs://' + dst.replace(/\/+$/, '');
+        document.getElementById('dest-path-preview-text').textContent = norm + '/';
+        dstDiv.style.display = 'block';
+    } else {
+        dstDiv.style.display = 'none';
+    }
+}
+
 // ===== ADVANCED OPTIONS =====
 
 function toggleAdvancedOptions() {
@@ -101,7 +127,11 @@ document.getElementById('cloud-transfer-form').addEventListener('submit', async 
 async function loadCloudTransfers() {
     try {
         const response = await fetch('/api/cloud/transfers');
-        if (!response.ok) throw new Error('Failed to load transfers');
+        if (!response.ok) {
+            const container = document.getElementById('cloud-jobs-list');
+            container.innerHTML = '<p style="text-align:center;color:#dc2626;padding:30px 0;">Failed to load transfers (API error ' + response.status + ')</p>';
+            return;
+        }
 
         const jobs = await response.json();
         cloudTransferJobs = {};
@@ -112,6 +142,8 @@ async function loadCloudTransfers() {
         renderCloudJobs(jobs);
     } catch (error) {
         console.error('Error loading transfers:', error);
+        const container = document.getElementById('cloud-jobs-list');
+        container.innerHTML = '<p style="text-align:center;color:#dc2626;padding:30px 0;">Could not connect to server.</p>';
     }
 }
 
@@ -210,12 +242,6 @@ function getStatusIcon(status) {
     }
 }
 
-function formatDate(dateStr) {
-    if (!dateStr) return 'N/A';
-    const date = new Date(dateStr);
-    return date.toLocaleString();
-}
-
 // ===== VIEW TRANSFER OUTPUT =====
 
 async function viewTransferOutput(jobId) {
@@ -258,17 +284,11 @@ async function viewTransferOutput(jobId) {
         html += '</div>';
 
         modalBody.innerHTML = html;
-        document.getElementById('jobModal').style.display = 'flex';
+        document.getElementById('jobModal').style.display = 'block';
     } catch (error) {
         console.error('Error fetching transfer details:', error);
         showToast('Error loading transfer details', 'error');
     }
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
 
 // ===== CLEAR COMPLETED TRANSFERS =====
