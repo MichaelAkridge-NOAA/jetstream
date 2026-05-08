@@ -32,7 +32,8 @@ class BucketBrowserScreen(Screen):
         layout: vertical;
     }
     #nav-row {
-        height: 5;
+        height: auto;
+        min-height: 5;
         layout: horizontal;
         padding: 1 2;
         background: $panel-darken-1;
@@ -66,6 +67,32 @@ class BucketBrowserScreen(Screen):
         height: 3;
         background: $panel-darken-2;
         padding: 1 2;
+    }
+
+    /* Responsive adjustments */
+    BucketBrowserScreen.-vertical-layout #main-row {
+        layout: vertical;
+    }
+    BucketBrowserScreen.-vertical-layout #left-browser {
+        width: 100%;
+        height: 1fr;
+    }
+    BucketBrowserScreen.-vertical-layout #right-info {
+        width: 100%;
+        height: 1fr;
+        border-left: none;
+        border-top: tall $accent;
+    }
+    BucketBrowserScreen.-hide-info #right-info {
+        display: none;
+    }
+    BucketBrowserScreen.-stack-nav #nav-row {
+        layout: vertical;
+        height: auto;
+    }
+    BucketBrowserScreen.-stack-nav #bucket-input {
+        width: 100%;
+        margin-bottom: 1;
     }
     """
 
@@ -111,6 +138,16 @@ class BucketBrowserScreen(Screen):
     def on_mount(self) -> None:
         table = self.query_one("#object-table", DataTable)
         table.add_columns("Type", "Name", "Size", "Updated")
+        self._update_responsive_classes()
+
+    def on_resize(self) -> None:
+        self._update_responsive_classes()
+
+    def _update_responsive_classes(self) -> None:
+        width, height = self.size
+        self.set_class(width < 80, "-stack-nav")
+        self.set_class(width < 100, "-vertical-layout")
+        self.set_class(height < 15, "-hide-info")
 
     # ------------------------------------------------------------------
     # Navigation

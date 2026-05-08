@@ -58,8 +58,10 @@ class DashboardScreen(Screen):
         layout: vertical;
     }
     #header-row {
-        height: 8;
+        height: auto;
+        min-height: 3;
         layout: horizontal;
+        background: $panel;
     }
     #logo-area {
         width: 26;
@@ -67,7 +69,7 @@ class DashboardScreen(Screen):
     }
     #status-area {
         width: 1fr;
-        height: 8;
+        height: auto;
     }
     #main-row {
         height: 1fr;
@@ -86,6 +88,33 @@ class DashboardScreen(Screen):
         background: $panel;
         padding: 1 2;
         color: $text-muted;
+    }
+
+    /* Responsive adjustments */
+    DashboardScreen.-hide-logo #logo-area {
+        display: none;
+    }
+    DashboardScreen.-hide-metrics SystemMetricsWidget {
+        display: none;
+    }
+    DashboardScreen.-vertical-layout #main-row {
+        layout: vertical;
+    }
+    DashboardScreen.-vertical-layout #left-panel {
+        width: 100%;
+        height: 1fr;
+    }
+    DashboardScreen.-vertical-layout #right-panel {
+        width: 100%;
+        height: 1fr;
+        border-left: none;
+        border-top: tall $accent;
+    }
+    DashboardScreen.-hide-detail #right-panel {
+        display: none;
+    }
+    DashboardScreen.-hide-filter #filter-bar {
+        display: none;
     }
     """
 
@@ -114,6 +143,26 @@ class DashboardScreen(Screen):
     def on_mount(self) -> None:
         self.set_interval(_REFRESH_INTERVAL, self._refresh_data)
         self._refresh_data()
+        self._update_responsive_classes()
+
+    def on_resize(self) -> None:
+        self._update_responsive_classes()
+
+    def _update_responsive_classes(self) -> None:
+        """Update CSS classes based on terminal size."""
+        width, height = self.size
+
+        # Logo and metrics hiding
+        self.set_class(width < 80 or height < 24, "-hide-logo")
+        self.set_class(height < 20, "-hide-metrics")
+
+        # Layout switching
+        is_narrow = width < 100
+        self.set_class(is_narrow, "-vertical-layout")
+
+        # In extremely small terminals, hide components to avoid layout thrashing
+        self.set_class(height < 15 and is_narrow, "-hide-detail")
+        self.set_class(height < 12, "-hide-filter")
 
     # ------------------------------------------------------------------
     # Data refresh
