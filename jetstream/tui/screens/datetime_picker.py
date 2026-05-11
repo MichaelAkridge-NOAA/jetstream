@@ -212,12 +212,12 @@ class DateTimePickerScreen(ModalScreen[str | None]):
 
             with Horizontal(id="title-row"):
                 yield Label("📅  Pick Date & Time", id="picker-title")
-                yield Button("✕ Close", id="btn-close", variant="error")
+                yield Button("✕ Close", id="btn-close", variant="error", tooltip="Close")
 
             with Horizontal(id="month-nav"):
-                yield Button("◄", id="prev-month", variant="default")
+                yield Button("◄", id="prev-month", variant="default", tooltip="Previous month")
                 yield Label("", id="month-label")
-                yield Button("►", id="next-month", variant="default")
+                yield Button("►", id="next-month", variant="default", tooltip="Next month")
 
             with Horizontal(id="day-headers"):
                 for hdr in ("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"):
@@ -232,13 +232,13 @@ class DateTimePickerScreen(ModalScreen[str | None]):
 
             with Horizontal(id="time-row"):
                 yield Label("Time:", id="time-lbl")
-                yield Button("-", id="hour-dec", classes="time-btn")
+                yield Button("-", id="hour-dec", classes="time-btn", tooltip="Decrease hour")
                 yield Label("00", id="hour-val")
-                yield Button("+", id="hour-inc", classes="time-btn")
+                yield Button("+", id="hour-inc", classes="time-btn", tooltip="Increase hour")
                 yield Label(":", id="time-sep")
-                yield Button("-", id="min-dec", classes="time-btn")
+                yield Button("-", id="min-dec", classes="time-btn", tooltip="Decrease minute")
                 yield Label("00", id="min-val")
-                yield Button("+", id="min-inc", classes="time-btn")
+                yield Button("+", id="min-inc", classes="time-btn", tooltip="Increase minute")
                 yield Button("AM", id="ampm-btn", variant="primary")
                 yield Button("12h", id="mode-btn", variant="default")
 
