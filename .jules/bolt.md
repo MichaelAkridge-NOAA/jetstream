@@ -1,0 +1,3 @@
+## 2025-05-15 - [Regex Consolidation and Path Parsing Optimization]
+**Learning:** Consolidating multiple regex patterns into a single compiled expression using alternation (`|`) significantly improves performance in Python's regex engine by reducing the number of passes over the input string. Additionally, avoiding redundant `os.path.basename` calls during tight loops (like directory scanning) by passing pre-computed filenames from `os.scandir` yields measurable speedups.
+**Action:** Always prefer single compiled regexes for batch filtering and pass pre-extracted metadata (like entry names) to helper functions to avoid re-parsing paths.

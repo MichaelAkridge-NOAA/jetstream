@@ -68,11 +68,21 @@ class FileFilter:
                  exclude_folders: List[str] = None):
         self.include_patterns = include_patterns or settings.INCLUDE_PATTERNS
         self.exclude_patterns = exclude_patterns or settings.EXCLUDE_PATTERNS
-        self.exclude_folders = exclude_folders or settings.EXCLUDE_FOLDERS
+        # Use set for O(1) folder exclusion lookups
+        self.exclude_folders = set(exclude_folders or settings.EXCLUDE_FOLDERS)
         
-        # Compile regex patterns (convert glob to regex if needed)
-        self.include_regex = [re.compile(self._glob_to_regex(p), re.IGNORECASE) for p in self.include_patterns]
-        self.exclude_regex = [re.compile(self._glob_to_regex(p), re.IGNORECASE) for p in self.exclude_patterns]
+        # Consolidate regex patterns into single compiled expressions for performance
+        if self.exclude_patterns:
+            exclude_combined = "|".join(f"(?:{self._glob_to_regex(p)})" for p in self.exclude_patterns)
+            self.exclude_regex = re.compile(exclude_combined, re.IGNORECASE)
+        else:
+            self.exclude_regex = None
+
+        if self.include_patterns:
+            include_combined = "|".join(f"(?:{self._glob_to_regex(p)})" for p in self.include_patterns)
+            self.include_regex = re.compile(include_combined, re.IGNORECASE)
+        else:
+            self.include_regex = None
     
     def _glob_to_regex(self, pattern: str) -> str:
         """Convert a glob pattern to regex, or return as-is if already regex."""
@@ -103,24 +113,23 @@ class FileFilter:
             # Exact filename match (e.g., Thumbs.db)
             return re.escape(pattern)
     
-    def should_include_file(self, filepath: str) -> bool:
-        """Check if file should be included based on patterns."""
-        filename = os.path.basename(filepath)
+    def should_include_file(self, filepath: str, filename: str = None) -> bool:
+        """Check if file should be included based on patterns.
         
-        # Check exclude patterns first
-        for pattern in self.exclude_regex:
-            if pattern.match(filename):
-                return False
+        Optional filename parameter avoids redundant os.path.basename calls.
+        """
+        if filename is None:
+            filename = os.path.basename(filepath)
         
-        # Check include patterns
+        # Check exclude patterns first (consolidated regex)
+        if self.exclude_regex and self.exclude_regex.match(filename):
+            return False
+
+        # Check include patterns (consolidated regex)
         if not self.include_regex:
             return True
         
-        for pattern in self.include_regex:
-            if pattern.match(filename):
-                return True
-        
-        return False
+        return bool(self.include_regex.match(filename))
     
     def should_exclude_folder(self, folder_name: str) -> bool:
         """Check if folder should be excluded."""
@@ -154,7 +163,7 @@ class FolderAnalyzer:
                                 total += self.get_tree_size_fast(entry.path)
                         else:
                             # Check if file should be included
-                            if self.file_filter.should_include_file(entry.path):
+                            if self.file_filter.should_include_file(entry.path, filename=entry.name):
                                 total += entry.stat(follow_symlinks=False).st_size
                     except (OSError, PermissionError):
                         continue
@@ -176,7 +185,7 @@ class FolderAnalyzer:
                             if not self.file_filter.should_exclude_folder(entry.name):
                                 folder_count += 1
                         else:
-                            if self.file_filter.should_include_file(entry.path):
+                            if self.file_filter.should_include_file(entry.path, filename=entry.name):
                                 file_count += 1
                     except (OSError, PermissionError):
                         continue
@@ -277,7 +286,7 @@ class FolderAnalyzer:
             with os.scandir(path) as entries:
                 for entry in entries:
                     if entry.is_file(follow_symlinks=False):
-                        if self.file_filter.should_include_file(entry.path):
+                        if self.file_filter.should_include_file(entry.path, filename=entry.name):
                             try:
                                 root_size += entry.stat(follow_symlinks=False).st_size
                                 root_files += 1
@@ -326,7 +335,7 @@ class FolderAnalyzer:
                     
                     # Process files
                     for file_entry in files:
-                        if not self.file_filter.should_include_file(file_entry.path):
+                        if not self.file_filter.should_include_file(file_entry.path, filename=file_entry.name):
                             continue
                         
                         try:
@@ -386,7 +395,7 @@ class FolderAnalyzer:
                 filepath = os.path.join(root, file)
                 
                 # Check if file should be included
-                if not self.file_filter.should_include_file(filepath):
+                if not self.file_filter.should_include_file(filepath, filename=file):
                     continue
                 
                 try:
