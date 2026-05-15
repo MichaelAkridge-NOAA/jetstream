@@ -648,8 +648,6 @@ class JetStreamController:
         client = self._get_gcs_client()
         _prefix = prefix  # capture for closure
 
-        MAX_RESULTS = 5_000
-
         def _summarize() -> Dict[str, Any]:
             from collections import defaultdict
             import os
@@ -669,7 +667,6 @@ class JetStreamController:
                 bucket_name,
                 prefix=_prefix if _prefix else None,
                 page_size=500,
-                max_results=MAX_RESULTS,
             )
 
             for blob in blobs_iter:
@@ -715,8 +712,6 @@ class JetStreamController:
                     newest.append((ts, blob.name, sz))
                     oldest.append((ts, blob.name, sz))
 
-            capped = total_objects >= MAX_RESULTS
-
             # Sort and trim
             newest.sort(key=lambda x: x[0], reverse=True)
             oldest.sort(key=lambda x: x[0])
@@ -744,8 +739,6 @@ class JetStreamController:
                 "total_objects": total_objects,
                 "total_size_bytes": total_size,
                 "avg_size_bytes": (total_size / total_objects) if total_objects else 0,
-                "capped": capped,
-                "cap": MAX_RESULTS,
                 "top_prefixes_by_size": top_by_size,
                 "top_prefixes_by_count": top_by_count,
                 "extension_breakdown": top_exts,

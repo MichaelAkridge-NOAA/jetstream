@@ -270,13 +270,9 @@ class BucketAnalyticsScreen(Screen):
                 if data["prefix"]
                 else f"gs://{data['bucket']}"
             )
-            cap_note = (
-                f"  [yellow](capped at {data['cap']:,})[/yellow]"
-                if data["capped"] else ""
-            )
             self._set_status(
                 f"[green]✓  {path}  ·  {data['total_objects']:,} files"
-                f"  ·  {_fmt_bytes(data['total_size_bytes'])}[/green]{cap_note}"
+                f"  ·  {_fmt_bytes(data['total_size_bytes'])}[/green]"
                 f"  [dim]R=refresh  Esc=back[/dim]"
             )
         except Exception as exc:
@@ -301,7 +297,6 @@ class BucketAnalyticsScreen(Screen):
         self.query_one("#card-files", Static).update(
             f"[bold cyan]📁 FILES[/bold cyan]\n"
             f"[bold white]{d['total_objects']:,}[/bold white]"
-            + ("\n[yellow dim]scan capped[/yellow dim]" if d["capped"] else "")
         )
         self.query_one("#card-size", Static).update(
             f"[bold cyan]💾 TOTAL SIZE[/bold cyan]\n"
