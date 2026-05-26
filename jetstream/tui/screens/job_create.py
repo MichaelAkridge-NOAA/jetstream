@@ -25,6 +25,7 @@ _GCS_BUCKETS = [
     ("PIFSC",  "nmfs_odp_pifsc/"),
     ("AFSC",   "nmfs_odp_afsc/"),
     ("SWFSC",  "nmfs_odp_swfsc/"),
+    ("SEFSC",  "nmfs_odp_sefsc/"),
     ("NEFSC",  "nmfs_odp_nefsc/"),
     ("NWFSC",  "nmfs_odp_nwfsc/"),
 ]
