@@ -95,9 +95,9 @@ class BucketBrowserScreen(Screen):
     def compose(self) -> ComposeResult:
         yield Header()
         with Horizontal(id="nav-row"):
-            yield Input(placeholder="my-bucket-name", id="bucket-input")
-            yield Button("Browse", variant="primary", id="btn-browse")
-            yield Button("Summary", variant="default", id="btn-summary")
+            yield Input(placeholder="my-bucket-name", id="bucket-input", tooltip="Enter a bucket name or gs:// URI")
+            yield Button("Browse", variant="primary", id="btn-browse", tooltip="List objects in the bucket/prefix")
+            yield Button("Summary", variant="default", id="btn-summary", tooltip="View aggregate analytics for this bucket/prefix")
         yield Static("[dim]No bucket loaded — enter a bucket name and press Browse.[/dim]", id="prefix-label")
         with Horizontal(id="main-row"):
             with Vertical(id="left-browser"):
