@@ -96,8 +96,8 @@ class BucketBrowserScreen(Screen):
         yield Header()
         with Horizontal(id="nav-row"):
             yield Input(placeholder="my-bucket-name", id="bucket-input")
-            yield Button("Browse", variant="primary", id="btn-browse")
-            yield Button("Summary", variant="default", id="btn-summary")
+            yield Button("Browse", variant="primary", id="btn-browse", tooltip="Scan and list bucket contents")
+            yield Button("Summary", variant="default", id="btn-summary", tooltip="View aggregate analytics for this path")
         yield Static("[dim]No bucket loaded — enter a bucket name and press Browse.[/dim]", id="prefix-label")
         with Horizontal(id="main-row"):
             with Vertical(id="left-browser"):

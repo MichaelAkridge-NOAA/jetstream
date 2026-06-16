@@ -235,7 +235,7 @@ class JobCreateScreen(Screen):
 
                 with Horizontal(id="quickfill-row"):
                     for label, _ in _GCS_BUCKETS:
-                        yield Button(label, id=f"qf-{label.lower()}", classes="qf-btn", variant="default")
+                        yield Button(label, id=f"qf-{label.lower()}", classes="qf-btn", variant="default", tooltip=f"Quick-fill {label} bucket path")
 
                 yield Static(
                     "[dim]Press F5 or 'Analyze' to scan the source folder.[/dim]",
@@ -288,7 +288,7 @@ class JobCreateScreen(Screen):
                     yield Label("Schedule For (local time, optional)", classes="field-label")
                     with Horizontal(classes="dt-input-row"):
                         yield Input(placeholder="2026-05-10T14:00:00", id="scheduled-for")
-                        yield Button("📅", id="btn-pick-dt", variant="default")
+                        yield Button("📅", id="btn-pick-dt", variant="default", tooltip="Open date/time picker")
 
                 with Horizontal(classes="switch-pair"):
                     with Vertical():
@@ -305,11 +305,11 @@ class JobCreateScreen(Screen):
                 yield Label("─ FILE FILTERING ─", classes="col-head")
 
                 with Horizontal(id="preset-row"):
-                    yield Button("🗑️ Temp",    id="preset-temp",   classes="preset-btn", variant="default")
-                    yield Button("💻 System",  id="preset-system", classes="preset-btn", variant="default")
-                    yield Button("🐟 PIFSC",   id="preset-pifsc",  classes="preset-btn", variant="default")
-                    yield Button("🚫 No RAW",  id="preset-noraw",  classes="preset-btn", variant="default")
-                    yield Button("❌ Clear",   id="preset-clear",  classes="preset-btn", variant="error")
+                    yield Button("🗑️ Temp",    id="preset-temp",   classes="preset-btn", variant="default", tooltip="Exclude temporary files")
+                    yield Button("💻 System",  id="preset-system", classes="preset-btn", variant="default", tooltip="Exclude system files (e.g. .DS_Store)")
+                    yield Button("🐟 PIFSC",   id="preset-pifsc",  classes="preset-btn", variant="default", tooltip="Apply PIFSC exclude patterns")
+                    yield Button("🚫 No RAW",  id="preset-noraw",  classes="preset-btn", variant="default", tooltip="Exclude RAW image files")
+                    yield Button("❌ Clear",   id="preset-clear",  classes="preset-btn", variant="error", tooltip="Clear all exclude patterns")
 
                 with Vertical(classes="field-row"):
                     yield Label("Exclude Patterns (comma-separated)", classes="field-label")
@@ -330,14 +330,14 @@ class JobCreateScreen(Screen):
             )
             yield TextArea("", id="cmd-override", show_line_numbers=False)
             with Horizontal(id="cmd-copy-row"):
-                yield Button("↺ Copy from Preview", id="btn-copy-cmd", variant="default")
-                yield Button("× Clear Override",    id="btn-clear-cmd", variant="default")
+                yield Button("↺ Copy from Preview", id="btn-copy-cmd", variant="default", tooltip="Copy generated command to override area")
+                yield Button("× Clear Override",    id="btn-clear-cmd", variant="default", tooltip="Clear custom command override")
             yield Static("", id="error-msg")
 
         with Horizontal(id="btn-row"):
-            yield Button("Submit", variant="primary", id="btn-submit")
-            yield Button("Analyze (F5)", variant="default", id="btn-analyze")
-            yield Button("Cancel (Esc)", variant="error", id="btn-cancel")
+            yield Button("Submit", variant="primary", id="btn-submit", tooltip="Queue this upload job")
+            yield Button("Analyze (F5)", variant="default", id="btn-analyze", tooltip="Analyze source folder size and file count")
+            yield Button("Cancel (Esc)", variant="error", id="btn-cancel", tooltip="Discard changes and go back")
 
         yield Footer()
 
