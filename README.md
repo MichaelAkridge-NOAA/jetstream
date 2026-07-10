@@ -119,7 +119,7 @@ The application will start on **http://localhost:8000** and automatically open i
 
 ---
 
-## Native Google Drive Upload (Drive Upload tab)
+## Native Google Drive Upload (Beta - under settings)
 
 JetStream includes a native Google Drive page at `/static/gdrive.html` that authenticates via Google OAuth (PKCE) and talks directly to the Drive API.
 
