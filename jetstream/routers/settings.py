@@ -1,6 +1,6 @@
 """Settings and configuration management."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 from typing import Optional
 import os
@@ -13,10 +13,13 @@ class SettingsResponse(BaseModel):
     gcs_authenticated: bool
     auth_method: Optional[str]
     gcloud_account: Optional[str]
+    gdrive_router_available: bool
+    gdrive_router_error: Optional[str]
+    gdrive_client_configured: bool
 
 
 @router.get("/", response_model=SettingsResponse)
-async def get_settings():
+async def get_settings(request: Request):
     """Get current settings and check ADC authentication status."""
     from ..config import settings
 
@@ -66,5 +69,8 @@ async def get_settings():
     return SettingsResponse(
         gcs_authenticated=authenticated,
         auth_method=auth_method,
-        gcloud_account=gcloud_account
+        gcloud_account=gcloud_account,
+        gdrive_router_available=bool(getattr(request.app.state, "gdrive_router_available", False)),
+        gdrive_router_error=getattr(request.app.state, "gdrive_router_import_error", None),
+        gdrive_client_configured=bool(settings.GDRIVE_CLIENT_ID and settings.GDRIVE_CLIENT_SECRET),
     )

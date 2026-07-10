@@ -42,9 +42,11 @@ from .scheduler import scheduler
 try:
     from .routers import gdrive as gdrive_router
     GDRIVE_ROUTER_AVAILABLE = True
+    GDRIVE_ROUTER_IMPORT_ERROR = None
 except Exception as _gdrive_e:
     gdrive_router = None
     GDRIVE_ROUTER_AVAILABLE = False
+    GDRIVE_ROUTER_IMPORT_ERROR = f"{type(_gdrive_e).__name__}: {_gdrive_e}"
 
 # Import cloud analyzer separately with error handling to prevent startup crashes
 try:
@@ -176,6 +178,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Surface optional feature state for diagnostics endpoints/UI.
+app.state.gdrive_router_available = GDRIVE_ROUTER_AVAILABLE
+app.state.gdrive_router_import_error = GDRIVE_ROUTER_IMPORT_ERROR
+
 # Parse configured CORS origins once at startup.
 cors_origins = [
     origin.strip()
@@ -219,7 +225,10 @@ if GDRIVE_ROUTER_AVAILABLE:
     app.include_router(gdrive_router.router, prefix="/api/gdrive", tags=["Google Drive (Native)"])
     logger.info("[OK] Native GDrive router enabled")
 else:
-    logger.warning("[WARN] Native GDrive router disabled (check google-api-python-client install)")
+    logger.warning(
+        "[WARN] Native GDrive router disabled. Missing/failed dependency or import error: %s",
+        GDRIVE_ROUTER_IMPORT_ERROR or "unknown",
+    )
 
 # Serve static files (dashboard)
 # Use package-relative path for static files

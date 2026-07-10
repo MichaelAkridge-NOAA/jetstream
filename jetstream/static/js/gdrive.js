@@ -31,7 +31,20 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadAuthStatus() {
     try {
         const res = await fetch('/api/gdrive/auth/status');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (res.status === 404) {
+            showAuthError('Native Google Drive routes are not available on this server (HTTP 404). Check startup logs for "Native GDrive router disabled" and ensure google-api-python-client/google-auth-httplib2 are installed in the active environment.');
+            return;
+        }
+        if (!res.ok) {
+            let detail = '';
+            try {
+                const payload = await res.json();
+                detail = payload && payload.detail ? `: ${payload.detail}` : '';
+            } catch (_ignored) {
+                detail = '';
+            }
+            throw new Error(`HTTP ${res.status}${detail}`);
+        }
         const data = await res.json();
 
         document.getElementById('auth-not-configured').style.display = 'none';
