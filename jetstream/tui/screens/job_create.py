@@ -15,7 +15,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, ScrollableContainer
 from textual.screen import Screen
-from textual.widgets import Button, Footer, Header, Input, Label, Select, Static, Switch, TextArea
+from textual.widgets import Button, Footer, Header, Input, Label, Select, Static, Switch
 
 from ..controller import JetStreamController, _fmt_bytes
 from .datetime_picker import DateTimePickerScreen
@@ -160,16 +160,6 @@ class JobCreateScreen(Screen):
         background: $panel-darken-2;
         border: tall $accent;
         color: $success;
-        margin-bottom: 1;
-    }
-    #cmd-override {
-        height: 5;
-        border: tall $warning;
-        margin-bottom: 1;
-    }
-    #cmd-copy-row {
-        height: 3;
-        layout: horizontal;
         margin-bottom: 1;
     }
     /* ── Schedule field with picker button ─── */
@@ -324,14 +314,6 @@ class JobCreateScreen(Screen):
             yield Label("─ COMMAND PREVIEW ─", classes="col-head")
             yield Label("Live preview — updates as you fill in the form above", classes="field-label")
             yield Static("", id="cmd-display")
-            yield Label(
-                "Command Override  [dim](optional — edit to run a custom command instead)[/dim]",
-                classes="field-label",
-            )
-            yield TextArea("", id="cmd-override", show_line_numbers=False)
-            with Horizontal(id="cmd-copy-row"):
-                yield Button("↺ Copy from Preview", id="btn-copy-cmd", variant="default")
-                yield Button("× Clear Override",    id="btn-clear-cmd", variant="default")
             yield Static("", id="error-msg")
 
         with Horizontal(id="btn-row"):
@@ -348,8 +330,7 @@ class JobCreateScreen(Screen):
     def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id in ("gcs-dest", "source-path"):
             self._update_gcs_preview()
-        if event.input.id != "cmd-override":
-            self._rebuild_preview()
+        self._rebuild_preview()
 
     def _update_gcs_preview(self) -> None:
         import os
@@ -517,11 +498,6 @@ class JobCreateScreen(Screen):
         elif bid == "btn-pick-dt":
             current = self.query_one("#scheduled-for", Input).value
             self.app.push_screen(DateTimePickerScreen(current), self._on_datetime_picked)
-        elif bid == "btn-copy-cmd":
-            cmd = self._build_preview_command()
-            self.query_one("#cmd-override", TextArea).load_text(cmd)
-        elif bid == "btn-clear-cmd":
-            self.query_one("#cmd-override", TextArea).load_text("")
 
     def _on_datetime_picked(self, result: str | None) -> None:
         """Callback from DateTimePickerScreen — fill in the schedule input."""
@@ -573,7 +549,6 @@ class JobCreateScreen(Screen):
         source     = _val("source-path")
         gcs_dest   = _val("gcs-dest")
         job_name   = _val("job-name")
-        custom_cmd = self.query_one("#cmd-override", TextArea).text.strip()
 
         if not source or not gcs_dest:
             error_widget.update("[red]Source path and GCS destination are required.[/red]")
@@ -631,8 +606,6 @@ class JobCreateScreen(Screen):
             params["scheduled_for"] = scheduled_for
         if job_name:
             params["friendly_name"] = job_name
-        if custom_cmd:
-            params["custom_command"] = custom_cmd
 
         try:
             job_id = await self.controller.create_job(params)

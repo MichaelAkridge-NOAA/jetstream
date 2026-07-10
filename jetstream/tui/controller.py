@@ -437,7 +437,7 @@ class JetStreamController:
             raise ValueError(f"Folder analysis failed: {e}") from e
 
         user_friendly_name = params.pop("friendly_name", None)
-        custom_command = params.pop("custom_command", None)
+        params.pop("custom_command", None)
         log_dir = os.path.join(os.getcwd(), "logs")
         initial_status = "scheduled" if req.scheduled_for else "queued"
 
@@ -483,7 +483,6 @@ class JetStreamController:
                         auto_retry=req.auto_retry,
                         auto_retry_delay_minutes=req.auto_retry_delay_minutes,
                         max_auto_retries=req.max_auto_retries,
-                        custom_command=custom_command,
                     )
                     db.add(job)
                     db.commit()
@@ -530,7 +529,6 @@ class JetStreamController:
                 auto_retry=req.auto_retry,
                 auto_retry_delay_minutes=req.auto_retry_delay_minutes,
                 max_auto_retries=req.max_auto_retries,
-                custom_command=custom_command,
             )
             db.add(job)
             db.commit()

@@ -1,15 +1,16 @@
 # NOAA JetStream — Cloud Data Management Transfer System
 <img align="right" src="https://github.com/MichaelAkridge-NOAA/jetstream/raw/main/docs/jetstream_logo_400px.png" alt="jetstream" width="250">
 
-A comprehensive web-based application for managing Google Cloud Storage uploads with features including job queuing, real-time analytics, cloud bucket analysis, and batch processing capabilities.
+A comprehensive web-based application for managing Google Cloud Storage uploads and Google Drive transfers, with features including job queuing, real-time analytics, and batch processing capabilities.
 
 ### Features
 
-- **Upload Management**
-- **Analytics & Monitoring**
-- **Cloud Bucket Analysis**
-- **File Filtering**
-- **Web Dashboard**
+- **Upload Management** — queue-backed GCS uploads with retry, scheduling, and no-clobber support
+- **Analytics & Monitoring** — real-time job stats, file-type breakdown, activity timeline
+- **Cloud Bucket Analysis** — browse and analyze GCS bucket contents
+- **Native Google Drive Upload** — OAuth-authenticated upload and folder sync to Google Drive
+- **File Filtering** — include/exclude patterns for uploads
+- **Web Dashboard** — browser-based UI at `http://localhost:8000`
 - **Terminal UI (TUI)** — full-featured htop-style dashboard for terminals and remote sessions
 
 ## Screenshots
@@ -24,7 +25,7 @@ A comprehensive web-based application for managing Google Cloud Storage uploads 
 ### Prerequisites
 
 - **Python 3.9+**
-- **Google Cloud SDK** (includes gsutil) — for cloud upload features
+- **Google Cloud SDK** (includes gsutil) — for GCS upload features
 - **Permissions** to target GCS buckets
 ---
 ### Google Cloud Setup
@@ -115,6 +116,70 @@ python -m uvicorn jetstream.main:app --reload
 ```
 
 The application will start on **http://localhost:8000** and automatically open in your default browser.
+
+---
+
+## Native Google Drive Upload (Drive Upload tab)
+
+JetStream includes a native Google Drive page at `/static/gdrive.html` that authenticates via Google OAuth (PKCE) and talks directly to the Drive API.
+
+### Setup
+
+1. Install dependencies:
+
+```bash
+pip install google-api-python-client google-auth-httplib2
+```
+
+2. In [Google Cloud Console](https://console.cloud.google.com/apis/credentials), create an **OAuth 2.0 Client ID**:
+   - Type: **Web application**
+   - Authorized redirect URI: `http://localhost:8000/api/gdrive/auth/callback`
+
+3. Add credentials to `.env`:
+
+```bash
+GDRIVE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GDRIVE_CLIENT_SECRET=your-client-secret
+# Security defaults for Drive OAuth
+GDRIVE_ALLOW_INSECURE_OAUTH=false
+
+# Recommended CORS lockdown before public exposure
+CORS_ALLOW_ORIGINS=http://localhost:8000,http://127.0.0.1:8000
+```
+
+4. Start JetStream and open:
+
+```text
+http://localhost:8000/static/gdrive.html
+```
+
+5. Click **Connect Google Account**, browse to a destination folder, then upload or sync local files.
+
+### OAuth testing/publishing note
+
+If your consent screen is in **Testing** mode, only manually added test users can sign in. To allow any Google account:
+
+- Go to [APIs & Services → OAuth consent screen](https://console.cloud.google.com/apis/credentials/consent)
+- Click **Publish App** and confirm. Users will see an "unverified app" warning but can click through (Advanced → Continue).
+- Reference: https://support.google.com/cloud/answer/13461325
+
+---
+
+### Known Limits of the Drive Upload Tab
+
+| Limit | Detail |
+|-------|--------|
+| **Single-user only** | One OAuth token is stored per account email. Multi-user isolation is not implemented. |
+| **No upload progress** | The upload API call is synchronous — the UI shows a spinner but there is no byte-level progress bar or cancel support. Large files will appear to hang until done. |
+| **No background jobs** | Drive uploads and folder syncs run in the FastAPI request thread. There is no queue, retry, or scheduling like the GCS upload page has. |
+| **Sync does not delete** | `POST /api/gdrive/sync` only adds/updates files. It never deletes files in the Drive destination that no longer exist locally (one-way copy, not a true sync). |
+| **No overwrite by default** | With `overwrite=false` (default), a file that already exists in the Drive folder is skipped, not replaced. |
+| **File size** | The Drive API `MediaFileUpload` call loads the file in memory. Very large files (multi-GB) may exhaust server RAM. Resumable upload chunking is not implemented. |
+| **Root-only browse pagination** | The folder browser fetches one page of results at a time (100 items). Folders with more than 100 children require clicking **Load more** — deeply nested or very wide trees take multiple round trips. |
+| **Session auth only** | OAuth tokens are kept in server memory only. Users must reconnect after a server restart. Startup purges legacy Drive OAuth token rows from older local databases. |
+| **OAuth transport safety** | Insecure HTTP OAuth transport is disabled by default (`GDRIVE_ALLOW_INSECURE_OAUTH=false`) and should only be enabled for localhost/dev. |
+| **CORS defaults are local-only** | `CORS_ALLOW_ORIGINS` defaults to localhost origins. Set explicit trusted origins before exposing JetStream publicly. |
+| **App-in-testing scope** | `https://www.googleapis.com/auth/drive` (full Drive access) is requested. Google may require app verification before allowing broad access to non-test accounts. |
 
 ---
 

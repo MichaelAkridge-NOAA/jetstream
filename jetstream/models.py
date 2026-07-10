@@ -144,6 +144,8 @@ class JobStatusResponse(BaseModel):
     log_path: Optional[str]
     upload_output: Optional[str] = None
     filters: Optional[dict] = None
+    job_type: str = "upload"
+    transfer_direction: str = "local_to_cloud"
 
     # Data protection & rsync options (Issue #13)
     no_clobber: bool = False
@@ -192,3 +194,91 @@ class CloudAnalysisRequest(BaseModel):
     bucket_name: str = Field(..., description="GCS bucket name")
     prefix: str = Field("", description="Folder prefix to analyze (optional)")
     max_depth: int = Field(3, description="Maximum folder depth to analyze")
+
+
+# ── Native Google Drive API models (gdrive page) ─────────────────────────────
+
+class GDriveAuthStatus(BaseModel):
+    """Current OAuth connection status for the native Drive page."""
+    connected: bool
+    account_email: Optional[str] = None
+    scopes: Optional[str] = None
+    client_configured: bool   # True when GDRIVE_CLIENT_ID/SECRET are set
+    auth_url: Optional[str] = None  # populated when not connected and client configured
+
+
+class GDriveBrowseItem(BaseModel):
+    """Single file or folder returned by the Drive browser."""
+    id: str
+    name: str
+    mime_type: str
+    is_folder: bool
+    modified_time: Optional[str] = None
+    size_bytes: Optional[int] = None
+    web_view_link: Optional[str] = None
+
+
+class GDriveBrowseResponse(BaseModel):
+    """Response from the Drive folder browser endpoint."""
+    folder_id: str
+    folder_name: str
+    items: List[GDriveBrowseItem]
+    next_page_token: Optional[str] = None
+
+
+class GDriveUploadRequest(BaseModel):
+    """Request to upload a local file to Google Drive."""
+    local_path: str = Field(..., description="Absolute local file path to upload")
+    folder_id: str = Field("root", description="Drive folder ID to upload into")
+    overwrite: bool = Field(False, description="If True, replace existing file with same name")
+
+
+class GDriveUploadResponse(BaseModel):
+    """Result of a Drive upload operation."""
+    success: bool
+    upload_id: Optional[str] = None
+    status: Optional[str] = None
+    progress_pct: Optional[int] = None
+    file_id: Optional[str] = None
+    file_name: Optional[str] = None
+    web_view_link: Optional[str] = None
+    error: Optional[str] = None
+
+
+class GDriveUploadStatusResponse(BaseModel):
+    """Live status for an asynchronous single-file upload."""
+    upload_id: str
+    status: str
+    progress_pct: int = 0
+    file_name: Optional[str] = None
+    file_id: Optional[str] = None
+    web_view_link: Optional[str] = None
+    error: Optional[str] = None
+
+
+class GDriveSyncRequest(BaseModel):
+    """Request to sync a local folder to a Google Drive folder."""
+    local_folder: str = Field(..., description="Absolute local directory path to sync")
+    drive_folder_id: str = Field("root", description="Drive folder ID to sync into")
+    recursive: bool = Field(True, description="Include sub-folders")
+    overwrite: bool = Field(False, description="Replace existing files with the same name")
+    concurrency: int = Field(4, ge=1, le=16, description="Number of files to upload in parallel (1-16)")
+    chunk_size_mb: int = Field(8, ge=1, le=64, description="Resumable upload chunk size in MB (1-64)")
+
+
+class GDriveSyncFileResult(BaseModel):
+    """Result for a single file within a sync operation."""
+    local_path: str
+    file_name: str
+    success: bool
+    file_id: Optional[str] = None
+    web_view_link: Optional[str] = None
+    error: Optional[str] = None
+
+
+class GDriveSyncResponse(BaseModel):
+    """Result of a folder sync operation."""
+    total: int
+    succeeded: int
+    failed: int
+    files: list[GDriveSyncFileResult]

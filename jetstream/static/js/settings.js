@@ -103,12 +103,21 @@ function saveUIPreferences() {
         theme: document.getElementById('setting-theme').value,
         refresh_interval: parseInt(document.getElementById('setting-refresh-interval').value),
         notifications: document.getElementById('setting-notifications').checked,
-        confirm_delete: document.getElementById('setting-confirm-delete').checked
+        confirm_delete: document.getElementById('setting-confirm-delete').checked,
+        beta_pages: {
+            drive_upload: document.getElementById('setting-beta-drive-upload').checked,
+            cloud_audit: document.getElementById('setting-beta-cloud-audit').checked
+        }
     };
     localStorage.setItem('uiPreferences', JSON.stringify(uiPrefs));
 
     // Apply theme immediately
     applyTheme(uiPrefs.theme);
+
+    // Re-apply shared navigation/page visibility immediately.
+    if (typeof applyNavigationPreferences === 'function') {
+        applyNavigationPreferences();
+    }
 
     showToast('UI preferences saved! Refresh interval will take effect on next page load.', 'success');
 }
@@ -118,10 +127,16 @@ function loadUIPreferencesFromStorage() {
     if (stored) {
         try {
             const prefs = JSON.parse(stored);
+            const betaPages = prefs.beta_pages || {};
             document.getElementById('setting-theme').value = prefs.theme || 'light';
             document.getElementById('setting-refresh-interval').value = prefs.refresh_interval || 5;
             document.getElementById('setting-notifications').checked = prefs.notifications !== false;
             document.getElementById('setting-confirm-delete').checked = prefs.confirm_delete !== false;
+            document.getElementById('setting-beta-drive-upload').checked = betaPages.drive_upload === true;
+            document.getElementById('setting-beta-cloud-audit').checked = betaPages.cloud_audit === true;
         } catch (e) { /* ignore */ }
+    } else {
+        document.getElementById('setting-beta-drive-upload').checked = false;
+        document.getElementById('setting-beta-cloud-audit').checked = false;
     }
 }

@@ -50,7 +50,7 @@ class UploadJob(Base):
 
     # Data protection & rsync options (Issue #13)
     no_clobber = Column(Boolean, default=False)
-    custom_command = Column(Text, nullable=True)  # Optional command override set from TUI
+    custom_command = Column(Text, nullable=True)  # Legacy column; cleared at startup for security.
 
     # Auto-retry configuration (Issue #14)
     auto_retry = Column(Boolean, default=False)
@@ -61,6 +61,18 @@ class UploadJob(Base):
     
     def to_dict(self):
         """Convert to dictionary."""
+        filters = self.filters or {}
+
+        def calculate_progress_percent():
+            if self.status == "completed":
+                return 100.0
+
+            total_size = self.total_size_bytes or 0
+            if total_size <= 0:
+                return 0.0
+
+            return round(((self.bytes_uploaded or 0) / total_size) * 100, 2)
+
         # Helper to format datetime as UTC ISO string
         def format_dt(dt):
             if not dt:
@@ -85,7 +97,7 @@ class UploadJob(Base):
             "total_size_bytes": self.total_size_bytes,
             "files_uploaded": self.files_uploaded,
             "bytes_uploaded": self.bytes_uploaded,
-            "progress_percent": round((self.bytes_uploaded / self.total_size_bytes * 100) if self.total_size_bytes > 0 else 0, 2),
+            "progress_percent": calculate_progress_percent(),
             "created_at": format_dt(self.created_at),
             "started_at": format_dt(self.started_at),
             "completed_at": format_dt(self.completed_at),
@@ -101,6 +113,8 @@ class UploadJob(Base):
             "log_path": self.log_path,
             "upload_output": self.upload_output,
             "filters": self.filters,
+            "job_type": filters.get("job_type", "upload"),
+            "transfer_direction": filters.get("transfer_direction", "local_to_cloud"),
             "no_clobber": self.no_clobber or False,
             "auto_retry": self.auto_retry or False,
             "auto_retry_delay_minutes": self.auto_retry_delay_minutes or 30,
@@ -159,15 +173,137 @@ class FolderStats(Base):
             "scanned_at": self.scanned_at.isoformat() if self.scanned_at else None
         }
 
+
+class CloudAuditRun(Base):
+    """Model for cloud bucket audit runs."""
+    __tablename__ = "cloud_audit_runs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    run_id = Column(String, unique=True, index=True)
+    status = Column(String, default="running")  # running, completed, failed
+    bucket_name = Column(String, nullable=False, index=True)
+    prefix = Column(String, default="")
+
+    # Scan options
+    dry_run = Column(Boolean, default=True)
+    scan_limit = Column(Integer, default=0)
+    reached_scan_limit = Column(Boolean, default=False)
+    regex_patterns = Column(JSON, nullable=True)
+    quarantine_bucket = Column(String, nullable=True)
+
+    # Metrics
+    scanned_objects = Column(Integer, default=0)
+    scanned_bytes = Column(Float, default=0.0)
+    junk_objects = Column(Integer, default=0)
+    junk_bytes = Column(Float, default=0.0)
+    quarantined_objects = Column(Integer, default=0)
+    quarantined_bytes = Column(Float, default=0.0)
+
+    # Timing and errors
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    started_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    completed_at = Column(DateTime, nullable=True)
+    error_message = Column(Text, nullable=True)
+
+    def to_dict(self):
+        """Convert to dictionary."""
+        def format_dt(dt):
+            if not dt:
+                return None
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            else:
+                dt = dt.astimezone(timezone.utc)
+            return dt.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+
+        return {
+            "id": self.id,
+            "run_id": self.run_id,
+            "status": self.status,
+            "bucket_name": self.bucket_name,
+            "prefix": self.prefix,
+            "dry_run": self.dry_run,
+            "scan_limit": self.scan_limit,
+            "reached_scan_limit": self.reached_scan_limit,
+            "regex_patterns": self.regex_patterns or [],
+            "quarantine_bucket": self.quarantine_bucket,
+            "scanned_objects": self.scanned_objects,
+            "scanned_bytes": self.scanned_bytes,
+            "junk_objects": self.junk_objects,
+            "junk_bytes": self.junk_bytes,
+            "quarantined_objects": self.quarantined_objects,
+            "quarantined_bytes": self.quarantined_bytes,
+            "created_at": format_dt(self.created_at),
+            "started_at": format_dt(self.started_at),
+            "completed_at": format_dt(self.completed_at),
+            "error_message": self.error_message,
+        }
+
+
+class CloudAuditFinding(Base):
+    """Model for per-object findings from cloud audit runs."""
+    __tablename__ = "cloud_audit_findings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    run_id = Column(String, index=True)
+    bucket_name = Column(String, index=True)
+    object_name = Column(String, nullable=False, index=True)
+    size_bytes = Column(Float, default=0.0)
+    updated_at = Column(DateTime, nullable=True)
+    matched_pattern = Column(String, nullable=False)
+    suggested_action = Column(String, default="quarantine")
+    action_status = Column(String, default="pending")  # pending, quarantined, skipped, error
+    quarantine_object_name = Column(String, nullable=True)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self):
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "run_id": self.run_id,
+            "bucket_name": self.bucket_name,
+            "object_name": self.object_name,
+            "size_bytes": self.size_bytes,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "matched_pattern": self.matched_pattern,
+            "suggested_action": self.suggested_action,
+            "action_status": self.action_status,
+            "quarantine_object_name": self.quarantine_object_name,
+            "error_message": self.error_message,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
 def _run_migrations():
     """Run database migrations for schema changes."""
     if SessionLocal is None or engine is None:
         return
     
     try:
-        # Check existing columns
+        # Check existing tables/columns
         from sqlalchemy import inspect, text
         inspector = inspect(engine)
+        tables = inspector.get_table_names()
+
+        # Security migration: Drive OAuth tokens are memory-only. Remove the
+        # legacy plaintext token table from older local databases.
+        if 'drive_user_tokens' in tables:
+            with engine.connect() as conn:
+                conn.execute(text("DROP TABLE drive_user_tokens"))
+                conn.commit()
+            print("✓ Dropped legacy Drive OAuth token table from database")
+
+        # Migration: Create cloud audit tables (for existing DBs)
+        if 'cloud_audit_runs' not in tables:
+            print("⚙ Running migration: Creating 'cloud_audit_runs' table...")
+            CloudAuditRun.__table__.create(bind=engine, checkfirst=True)
+            print("✓ Migration completed: cloud_audit_runs table created")
+
+        if 'cloud_audit_findings' not in tables:
+            print("⚙ Running migration: Creating 'cloud_audit_findings' table...")
+            CloudAuditFinding.__table__.create(bind=engine, checkfirst=True)
+            print("✓ Migration completed: cloud_audit_findings table created")
+
         columns = [col['name'] for col in inspector.get_columns('upload_jobs')]
         
         migrations_run = False
@@ -249,13 +385,37 @@ def _run_migrations():
             print("✓ Migration completed: custom_command column added")
             migrations_run = True
 
+        if 'custom_command' in columns:
+            with engine.connect() as conn:
+                result = conn.execute(text("UPDATE upload_jobs SET custom_command = NULL WHERE custom_command IS NOT NULL"))
+                conn.commit()
+            cleared = getattr(result, "rowcount", 0) or 0
+            if cleared:
+                print(f"✓ Cleared {cleared} legacy custom command value(s) from database")
+
         if not migrations_run:
             print("✓ Database schema is up to date")
-            
+
     except Exception as e:
         print(f"⚠ Migration warning: {e}")
         # Don't fail startup if migration has issues
         pass
+
+    # Migrate drive_sync_jobs table if it already exists but is missing columns
+    try:
+        inspector2 = inspect(engine)
+        if 'drive_sync_jobs' in inspector2.get_table_names():
+            drive_cols = [c['name'] for c in inspector2.get_columns('drive_sync_jobs')]
+            if 'bisync_resync' not in drive_cols:
+                with engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE drive_sync_jobs ADD COLUMN bisync_resync BOOLEAN DEFAULT 0"))
+                    conn.commit()
+            if 'cleared' not in drive_cols:
+                with engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE drive_sync_jobs ADD COLUMN cleared BOOLEAN DEFAULT 0"))
+                    conn.commit()
+    except Exception as e:
+        print(f"⚠ Drive table migration warning: {e}")
 
 def init_db():
     """Initialize database."""
@@ -288,7 +448,7 @@ def _recover_stuck_jobs():
     
     db = SessionLocal()
     try:
-        # Find jobs stuck in running or pending state
+        # Find upload jobs stuck in running or pending state
         stuck_jobs = db.query(UploadJob).filter(
             UploadJob.status.in_(['running', 'pending'])
         ).all()
@@ -304,6 +464,23 @@ def _recover_stuck_jobs():
             
             db.commit()
             print("✓ Recovered stuck jobs")
+
+        # Find cloud audit runs that were interrupted by restart.
+        stuck_audit_runs = db.query(CloudAuditRun).filter(
+            CloudAuditRun.status.in_(['queued', 'running', 'cancel_requested'])
+        ).all()
+
+        if stuck_audit_runs:
+            print(f"⚠ Found {len(stuck_audit_runs)} stuck cloud audit runs from previous session")
+
+            for run in stuck_audit_runs:
+                run.status = 'failed'
+                run.error_message = 'Server restarted while cloud audit run was in progress'
+                run.completed_at = datetime.now(timezone.utc)
+                print(f"  - Reset cloud audit run {run.run_id} to 'failed'")
+
+            db.commit()
+            print("✓ Recovered stuck cloud audit runs")
     except Exception as e:
         print(f"❌ Error recovering stuck jobs: {e}")
     finally:

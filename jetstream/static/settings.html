@@ -20,7 +20,9 @@
     <div class="nav-tabs">
         <button class="nav-tab" onclick="window.location.href='/'">🏠 Home</button>
         <button class="nav-tab" onclick="window.location.href='/static/uploads.html'">📤 Uploads</button>
-        <button class="nav-tab" onclick="window.location.href='/static/cloud.html'">☁️ Cloud Transfer</button>
+        <button class="nav-tab" onclick="window.location.href='/static/gdrive.html'">🗂️ Drive Upload</button>
+        <button class="nav-tab" onclick="window.location.href='/static/cloud.html'">☁️ Cloud Sync</button>
+        <button class="nav-tab" onclick="window.location.href='/static/cloud-audit.html'">🧹 Cloud Audit</button>
         <button class="nav-tab" onclick="window.location.href='/static/jobs.html'">📋 Jobs</button>
         <button class="nav-tab" onclick="window.location.href='/static/analytics.html'">📊 Analytics</button>
         <button class="nav-tab active" onclick="window.location.href='/static/settings.html'">⚙️ Settings</button>
@@ -29,7 +31,7 @@
     <div class="container">
         <div class="panel" style="margin-top: 30px;">
             <h2>⚙️ Application Settings</h2>
-            <p style="color: #64748b; margin-bottom: 20px;">Configure authentication, application preferences, and UI settings</p>
+            <p style="color: #64748b; margin-bottom: 20px;">Configure authentication, application preferences, UI settings, and beta features</p>
             
             <!-- Settings Sub-Tabs -->
             <div style="display: flex; gap: 10px; border-bottom: 2px solid #e2e8f0; margin-bottom: 25px;">
@@ -41,6 +43,9 @@
                 </button>
                 <button class="settings-subtab" id="ui-subtab" onclick="switchSettingsTab('ui')">
                     🎨 UI Preferences
+                </button>
+                <button class="settings-subtab" id="beta-subtab" onclick="switchSettingsTab('beta')">
+                    🧪 Beta Features
                 </button>
             </div>
             
@@ -144,6 +149,30 @@
                 
                 <div style="margin-top: 20px;">
                     <button class="btn btn-primary" onclick="saveUIPreferences()">💾 Save UI Preferences</button>
+                </div>
+            </div>
+
+            <!-- Beta Features Tab -->
+            <div id="beta-tab" class="settings-tab-content">
+                <h3>Beta Features</h3>
+                <p style="color: #64748b; margin-bottom: 20px;">Enable pages that are hidden from navigation by default.</p>
+
+                <div style="max-width: 700px; padding: 16px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc;">
+                    <h4 style="margin: 0 0 12px 0; color: #1e293b;">Navigation Visibility</h4>
+
+                    <div class="checkbox-group" style="margin-top: 10px;">
+                        <input type="checkbox" id="setting-beta-drive-upload">
+                        <label for="setting-beta-drive-upload">Show Drive Upload page in navigation</label>
+                    </div>
+
+                    <div class="checkbox-group" style="margin-top: 10px;">
+                        <input type="checkbox" id="setting-beta-cloud-audit">
+                        <label for="setting-beta-cloud-audit">Show Cloud Audit page in navigation</label>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="saveUIPreferences()">💾 Save Beta Features</button>
                 </div>
             </div>
             

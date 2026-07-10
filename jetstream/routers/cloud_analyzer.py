@@ -1,6 +1,6 @@
 """Cloud Storage Analyzer - On-demand GCS bucket analysis."""
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
 from datetime import datetime, timezone
@@ -8,6 +8,11 @@ import asyncio
 import subprocess
 import threading
 import uuid
+import shutil
+from sqlalchemy.orm import Session
+
+from ..database import UploadJob, get_db
+from ..services import redact_sensitive_text
 
 # Lazy import for Google Cloud Storage to avoid startup crashes
 # Will be imported only when actually needed
@@ -22,9 +27,14 @@ def get_storage_client():
             detail="Google Cloud Storage library not installed. Install with: pip install google-cloud-storage"
         )
     except Exception as e:
+        detail = redact_sensitive_text(str(e))
         raise HTTPException(
             status_code=401,
-            detail=f"Authentication failed. Please run 'gcloud auth application-default login' or set GOOGLE_APPLICATION_CREDENTIALS environment variable. Error: {str(e)}"
+            detail=(
+                "Authentication failed. Please run 'gcloud auth application-default login' "
+                "or set GOOGLE_APPLICATION_CREDENTIALS environment variable. "
+                f"Error: {detail}"
+            )
         )
 
 router = APIRouter()
@@ -44,6 +54,7 @@ class CloudTransferRequest(BaseModel):
     dest_path: str = Field(..., description="Destination GCS path (gs://bucket/path or bucket/path)")
     recursive: bool = Field(True, description="Include subfolders")
     dry_run: bool = Field(True, description="Preview without actually transferring")
+    no_clobber: bool = Field(False, description="Skip objects that already exist at destination")
     exclude_patterns: Optional[List[str]] = Field(None, description="Patterns to exclude")
 
 class CloudTransferResponse(BaseModel):
@@ -208,8 +219,95 @@ def normalize_gcs_path(path: str) -> str:
     return f"gs://{path}"
 
 
+def split_gcs_path(path: str) -> tuple[str, str]:
+    """Split a normalized GCS path into bucket and object prefix."""
+    normalized = normalize_gcs_path(path)[5:]
+    bucket, _, prefix = normalized.partition('/')
+    return bucket, prefix
+
+
+def make_cloud_sync_name(job_id: str) -> str:
+    timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d-%H%M%S')
+    return f"cloud-sync-{timestamp}-{job_id}"
+
+
+def update_cloud_sync_job(job_id: str, status: str, output: str = None, error: str = None):
+    """Persist cloud sync background status into the shared jobs table."""
+    from .. import database
+
+    if database.SessionLocal is None:
+        return
+
+    db = database.SessionLocal()
+    try:
+        job = db.query(UploadJob).filter(UploadJob.job_id == job_id).first()
+        if not job:
+            return
+        job.status = status
+        if output is not None:
+            job.upload_output = output
+        if error is not None:
+            job.error_message = error
+        if status in ("completed", "failed", "cancelled"):
+            job.completed_at = datetime.now(timezone.utc)
+        db.commit()
+    finally:
+        db.close()
+
+
+def is_cloud_sync_job(job: UploadJob) -> bool:
+    filters = job.filters or {}
+    return filters.get("job_type") == "cloud_sync" or filters.get("transfer_direction") == "cloud_to_cloud"
+
+
+def cloud_sync_job_to_transfer(job: UploadJob) -> dict:
+    filters = job.filters or {}
+    destination = f"gs://{job.destination_bucket}"
+    if job.destination_path:
+        destination += f"/{job.destination_path.strip('/')}"
+
+    return {
+        "job_id": job.job_id,
+        "status": job.status,
+        "source_path": job.source_path,
+        "dest_path": destination,
+        "dry_run": job.dry_run,
+        "recursive": job.recursive,
+        "no_clobber": job.no_clobber or False,
+        "command": filters.get("display_command"),
+        "output": job.upload_output or "",
+        "created_at": job.to_dict().get("created_at"),
+        "completed_at": job.to_dict().get("completed_at"),
+        "error": job.error_message,
+    }
+
+
+def resolve_gcloud_executable() -> Optional[str]:
+    """Resolve gcloud executable path from PATH on all platforms."""
+    return shutil.which("gcloud") or shutil.which("gcloud.cmd")
+
+
+def format_display_command(cmd: list) -> str:
+    """Build a clean display command while preserving quoted paths/options."""
+    display_cmd = cmd.copy()
+    display_cmd[0] = "gcloud"
+
+    parts = []
+    for index, arg in enumerate(display_cmd):
+        value = str(arg)
+        if index >= len(display_cmd) - 2 or " " in value or "\\" in value:
+            parts.append(f'"{value}"')
+        else:
+            parts.append(value)
+    return " ".join(parts)
+
+
 @router.post("/transfer", response_model=CloudTransferResponse)
-async def start_cloud_transfer(request: CloudTransferRequest, background_tasks: BackgroundTasks):
+async def start_cloud_transfer(
+    request: CloudTransferRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     """
     Start a cloud-to-cloud transfer using gcloud storage rsync.
     """
@@ -217,9 +315,20 @@ async def start_cloud_transfer(request: CloudTransferRequest, background_tasks: 
     
     source = normalize_gcs_path(request.source_path)
     dest = normalize_gcs_path(request.dest_path)
+
+    gcloud_exe = resolve_gcloud_executable()
+    if not gcloud_exe:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Cloud Sync requires the Google Cloud CLI ('gcloud') but it was not found on PATH. "
+                "Install/repair Google Cloud SDK and verify with 'gcloud --version'. "
+                "If JetStream was already running, restart it after PATH updates."
+            )
+        )
     
     # Build command
-    cmd = ["gcloud", "storage", "rsync"]
+    cmd = [gcloud_exe, "storage", "rsync"]
     
     if request.recursive:
         cmd.append("--recursive")
@@ -228,6 +337,9 @@ async def start_cloud_transfer(request: CloudTransferRequest, background_tasks: 
         cmd.append("--dry-run")
     
     cmd.append("--checksums-only")
+
+    if request.no_clobber:
+        cmd.append("--no-clobber")
 
     # Combine exclude patterns into a single regex (gcloud accepts one --exclude flag)
     if request.exclude_patterns:
@@ -238,8 +350,38 @@ async def start_cloud_transfer(request: CloudTransferRequest, background_tasks: 
 
     cmd.extend([source, dest])
     
-    # Build display command
-    command_str = " ".join(cmd)
+    # Keep the absolute executable path for process launch reliability, but
+    # show a clean command in UI to match other pages.
+    command_str = format_display_command(cmd)
+    dest_bucket, dest_prefix = split_gcs_path(dest)
+
+    job = UploadJob(
+        job_id=job_id,
+        friendly_name=make_cloud_sync_name(job_id),
+        status="running",
+        source_path=source,
+        destination_bucket=dest_bucket,
+        destination_path=dest_prefix,
+        total_files=0,
+        total_size_bytes=0,
+        files_uploaded=0,
+        bytes_uploaded=0,
+        dry_run=request.dry_run,
+        recursive=request.recursive,
+        threads=1,
+        split_by_folder=False,
+        upload_tool="gcloud",
+        started_at=datetime.now(timezone.utc),
+        filters={
+            "job_type": "cloud_sync",
+            "transfer_direction": "cloud_to_cloud",
+            "display_command": command_str,
+            "exclude_patterns": request.exclude_patterns or []
+        },
+        no_clobber=request.no_clobber,
+    )
+    db.add(job)
+    db.commit()
     
     # Initialize job status
     cloud_transfer_jobs[job_id] = {
@@ -260,7 +402,7 @@ async def start_cloud_transfer(request: CloudTransferRequest, background_tasks: 
     return CloudTransferResponse(
         job_id=job_id,
         status="running",
-        message="Cloud transfer started" + (" (dry run)" if request.dry_run else ""),
+        message="Cloud sync started" + (" (dry run)" if request.dry_run else ""),
         command=command_str
     )
 
@@ -269,7 +411,7 @@ async def run_cloud_transfer(job_id: str, cmd: list):
     """Execute the cloud transfer command."""
     try:
         def run_sync():
-            print(f"Cloud Transfer: {' '.join(cmd)}")
+            print(f"Cloud Transfer: {redact_sensitive_text(' '.join(cmd))}")
 
             process = subprocess.Popen(
                 cmd,
@@ -288,7 +430,7 @@ async def run_cloud_transfer(job_id: str, cmd: list):
             def _read_stderr():
                 for line in process.stderr:
                     stderr_lines.append(line)
-                    print(line.rstrip())
+                    print(redact_sensitive_text(line.rstrip()))
 
             t1 = threading.Thread(target=_read_stdout, daemon=True)
             t2 = threading.Thread(target=_read_stderr, daemon=True)
@@ -307,41 +449,104 @@ async def run_cloud_transfer(job_id: str, cmd: list):
             output += f"STDOUT:\n{stdout}\n\n"
         if stderr:
             output += f"STDERR:\n{stderr}"
+        output = redact_sensitive_text(output)
 
         if returncode == 0:
             cloud_transfer_jobs[job_id]["status"] = "completed"
             cloud_transfer_jobs[job_id]["output"] = output
+            update_cloud_sync_job(job_id, "completed", output=output)
         else:
             cloud_transfer_jobs[job_id]["status"] = "failed"
             cloud_transfer_jobs[job_id]["output"] = output
-            cloud_transfer_jobs[job_id]["error"] = stderr.strip() or "Unknown error"
+            cloud_transfer_jobs[job_id]["error"] = redact_sensitive_text(stderr.strip() or "Unknown error")
+            update_cloud_sync_job(
+                job_id,
+                "failed",
+                output=output,
+                error=cloud_transfer_jobs[job_id]["error"]
+            )
 
         cloud_transfer_jobs[job_id]["completed_at"] = datetime.now(timezone.utc).isoformat()
 
-    except Exception as e:
+    except FileNotFoundError:
+        error = (
+            "Cloud Sync failed: Google Cloud CLI ('gcloud') executable was not found. "
+            "Install/repair Google Cloud SDK, ensure gcloud is on PATH, then restart JetStream."
+        )
         cloud_transfer_jobs[job_id]["status"] = "failed"
-        cloud_transfer_jobs[job_id]["error"] = str(e)
+        cloud_transfer_jobs[job_id]["error"] = error
         cloud_transfer_jobs[job_id]["completed_at"] = datetime.now(timezone.utc).isoformat()
+        update_cloud_sync_job(job_id, "failed", error=error)
+    except Exception as e:
+        error = redact_sensitive_text(str(e))
+        cloud_transfer_jobs[job_id]["status"] = "failed"
+        cloud_transfer_jobs[job_id]["error"] = error
+        cloud_transfer_jobs[job_id]["completed_at"] = datetime.now(timezone.utc).isoformat()
+        update_cloud_sync_job(job_id, "failed", error=error)
 
 
 @router.get("/transfer/{job_id}")
-async def get_transfer_status(job_id: str):
+async def get_transfer_status(job_id: str, db: Session = Depends(get_db)):
     """Get status of a cloud transfer job."""
-    if job_id not in cloud_transfer_jobs:
-        raise HTTPException(status_code=404, detail="Transfer job not found")
-    
-    job = cloud_transfer_jobs[job_id].copy()
-    job["job_id"] = job_id
-    return job
+    if job_id in cloud_transfer_jobs:
+        job = cloud_transfer_jobs[job_id].copy()
+        job["job_id"] = job_id
+        return job
+
+    persisted_job = db.query(UploadJob).filter(UploadJob.job_id == job_id).first()
+    if persisted_job and is_cloud_sync_job(persisted_job):
+        return cloud_sync_job_to_transfer(persisted_job)
+
+    raise HTTPException(status_code=404, detail="Transfer job not found")
 
 
 @router.get("/transfers")
-async def list_transfers():
+async def list_transfers(db: Session = Depends(get_db)):
     """List recent cloud transfer jobs."""
-    # Return as array with job_id included in each item
+    persisted_jobs = db.query(UploadJob).order_by(UploadJob.created_at.desc()).all()
     jobs = []
+    seen_job_ids = set()
+
+    for persisted_job in persisted_jobs:
+        if persisted_job.cleared or not is_cloud_sync_job(persisted_job):
+            continue
+        transfer = cloud_sync_job_to_transfer(persisted_job)
+        if persisted_job.job_id in cloud_transfer_jobs:
+            transfer.update(cloud_transfer_jobs[persisted_job.job_id])
+            transfer["job_id"] = persisted_job.job_id
+        jobs.append(transfer)
+        seen_job_ids.add(persisted_job.job_id)
+
     for job_id, job_data in cloud_transfer_jobs.items():
+        if job_id in seen_job_ids:
+            continue
         job = job_data.copy()
         job["job_id"] = job_id
         jobs.append(job)
+
     return jobs
+
+
+@router.post("/transfers/clear-completed")
+async def clear_completed_transfers(db: Session = Depends(get_db)):
+    """Clear completed cloud transfer jobs from the recent transfers list."""
+    cleared = 0
+    jobs = db.query(UploadJob).filter(
+        UploadJob.status.in_(["completed", "failed", "cancelled"]),
+        (UploadJob.cleared == False) | (UploadJob.cleared == None)
+    ).all()
+
+    for job in jobs:
+        if not is_cloud_sync_job(job):
+            continue
+        job.cleared = True
+        cleared += 1
+        cloud_transfer_jobs.pop(job.job_id, None)
+
+    for job_id, job_data in list(cloud_transfer_jobs.items()):
+        if job_data.get("status") in ("completed", "failed", "cancelled"):
+            cloud_transfer_jobs.pop(job_id, None)
+            cleared += 1
+
+    db.commit()
+    return {"message": f"Cleared {cleared} transfer(s) from recent list"}

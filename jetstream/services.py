@@ -20,6 +20,28 @@ from .models import JobStatus
 
 logger = logging.getLogger(__name__)
 
+_SENSITIVE_PATTERNS = [
+    re.compile(
+        r"(?i)\b(access[_-]?token|refresh[_-]?token|client[_-]?secret|api[_-]?key|password|secret|authorization)\b\s*[:=]\s*([^\s\"']+|\"[^\"]*\"|'[^']*')"
+    ),
+    re.compile(r"(?i)\bAuthorization:\s*Bearer\s+[^\s]+"),
+    re.compile(r"(?i)\b(GOOGLE_APPLICATION_CREDENTIALS|GDRIVE_CLIENT_SECRET)\s*=\s*([^\s\"']+|\"[^\"]*\"|'[^']*')"),
+    re.compile(r"(?i)([?&](?:X-Goog-Signature|X-Goog-Credential|X-Goog-Security-Token|Signature|AWSAccessKeyId)=)[^&\s]+"),
+]
+
+
+def redact_sensitive_text(value: object) -> str:
+    """Redact common credential material before persistence or display."""
+    text = "" if value is None else str(value)
+    for pattern in _SENSITIVE_PATTERNS:
+        if pattern.pattern.startswith("(?i)\\bAuthorization"):
+            text = pattern.sub("Authorization: Bearer [REDACTED]", text)
+        elif "X-Goog" in pattern.pattern or "AWSAccessKeyId" in pattern.pattern:
+            text = pattern.sub(r"\1[REDACTED]", text)
+        else:
+            text = pattern.sub(r"\1=[REDACTED]", text)
+    return text
+
 # Random word lists for friendly names
 ADJECTIVES = [
     'swift', 'brave', 'calm', 'bold', 'keen', 'wise', 'cool', 'fast',
@@ -512,8 +534,7 @@ class UploadService:
                            dry_run: bool = False, recursive: bool = True,
                            threads: int = 4, log_path: str = None, upload_tool: str = "gcloud",
                            exclude_patterns: list = None, exclude_folders: list = None,
-                           no_clobber: bool = False, progress_callback: Callable = None,
-                           custom_command: str = None) -> bool:
+                           no_clobber: bool = False, progress_callback: Callable = None) -> bool:
         """Upload files to Google Cloud Storage using gcloud storage or gsutil."""
         
         # Strip bucket name from destination_path if it starts with it
@@ -624,9 +645,8 @@ class UploadService:
                 shell_cmd_parts.append(arg)
         
         shell_cmd = ' '.join(shell_cmd_parts)
-        if custom_command:
-            shell_cmd = custom_command
-        print(f"🚀 Executing: {shell_cmd}")
+        display_shell_cmd = redact_sensitive_text(shell_cmd)
+        print(f"🚀 Executing: {display_shell_cmd}")
         
         try:
             # Windows doesn't support asyncio subprocess properly, so we use thread pool
@@ -659,7 +679,7 @@ class UploadService:
                 def _read_stderr():
                     for line in process.stderr:
                         stderr_lines.append(line)
-                        print(line.rstrip())
+                        print(redact_sensitive_text(line.rstrip()))
                         if progress_callback:
                             _parse_progress(line, progress_callback)
 
@@ -681,7 +701,9 @@ class UploadService:
                 del self.active_uploads[job_id]
             
             # Prepare output
-            output = f"STDOUT:\n{stdout if stdout else 'No output'}\n\nSTDERR:\n{stderr if stderr else 'No errors'}"
+            output = redact_sensitive_text(
+                f"STDOUT:\n{stdout if stdout else 'No output'}\n\nSTDERR:\n{stderr if stderr else 'No errors'}"
+            )
             
             # Save log if path provided (ALWAYS save, even on failure)
             if log_path:
@@ -706,7 +728,7 @@ class UploadService:
                         f.write(f"Dry Run:         {dry_run}\n")
                         f.write(f"Recursive:       {recursive}\n")
                         f.write(f"\n")
-                        f.write(f"Command:         {shell_cmd}\n")
+                        f.write(f"Command:         {display_shell_cmd}\n")
                         f.write(f"Return Code:     {returncode}\n")
                         f.write(f"Status:          {'SUCCESS' if returncode == 0 else 'FAILED'}\n")
                         f.write("\n" + "="*80 + "\n")
@@ -719,7 +741,7 @@ class UploadService:
             
             # Check for errors
             if returncode != 0:
-                error_msg = stderr if stderr else "Unknown error"
+                error_msg = redact_sensitive_text(stderr if stderr else "Unknown error")
                 print(f"❌ Upload failed: {error_msg}")
                 return False, output
             
@@ -734,7 +756,7 @@ class UploadService:
             print(f"Full traceback:\n{error_details}")
             
             # Save error to log file
-            output = f"Exception: {str(e)}\n\n{error_details}"
+            output = redact_sensitive_text(f"Exception: {str(e)}\n\n{error_details}")
             if log_path:
                 try:
                     os.makedirs(os.path.dirname(log_path), exist_ok=True)
@@ -753,7 +775,7 @@ class UploadService:
                         f.write(f"\n")
                         f.write(f"Source Path:     {source_path}\n")
                         f.write(f"Destination:     {gcs_path}\n")
-                        f.write(f"Command:         {shell_cmd}\n")
+                        f.write(f"Command:         {redact_sensitive_text(shell_cmd)}\n")
                         f.write(f"Status:          EXCEPTION\n")
                         f.write("\n" + "="*80 + "\n")
                         f.write("ERROR DETAILS\n")

@@ -32,6 +32,102 @@ function loadThemeOnStartup() {
 // Apply theme on every page load
 document.addEventListener('DOMContentLoaded', loadThemeOnStartup);
 
+// ===== SHARED NAVIGATION =====
+
+var DEFAULT_UI_PREFERENCES = {
+    theme: 'light',
+    refresh_interval: 5,
+    notifications: true,
+    confirm_delete: true,
+    beta_pages: {
+        drive_upload: false,
+        cloud_audit: false
+    }
+};
+
+function getUIPreferences() {
+    var prefs = {};
+    try {
+        prefs = JSON.parse(localStorage.getItem('uiPreferences') || '{}');
+    } catch (e) {
+        prefs = {};
+    }
+
+    var beta = prefs.beta_pages || {};
+    return {
+        theme: prefs.theme || DEFAULT_UI_PREFERENCES.theme,
+        refresh_interval: prefs.refresh_interval || DEFAULT_UI_PREFERENCES.refresh_interval,
+        notifications: prefs.notifications !== false,
+        confirm_delete: prefs.confirm_delete !== false,
+        beta_pages: {
+            drive_upload: beta.drive_upload === true,
+            cloud_audit: beta.cloud_audit === true
+        }
+    };
+}
+
+function _getCurrentPath() {
+    return window.location.pathname.toLowerCase();
+}
+
+function _isActiveTab(currentPath, tabPath) {
+    if (tabPath === '/') {
+        return currentPath === '/';
+    }
+    return currentPath === tabPath;
+}
+
+function renderSharedNav() {
+    var nav = document.querySelector('.nav-tabs');
+    if (!nav) return;
+
+    var prefs = getUIPreferences();
+    var tabs = [
+        { icon: '🏠', label: 'Home', href: '/' },
+        { icon: '📤', label: 'Uploads', href: '/static/uploads.html' },
+        { icon: '🗂️', label: 'Drive Upload', href: '/static/gdrive.html', visible: prefs.beta_pages.drive_upload },
+        { icon: '☁️', label: 'Cloud Sync', href: '/static/cloud.html' },
+        { icon: '🧹', label: 'Cloud Audit', href: '/static/cloud-audit.html', visible: prefs.beta_pages.cloud_audit },
+        { icon: '📋', label: 'Jobs', href: '/static/jobs.html' },
+        { icon: '📊', label: 'Analytics', href: '/static/analytics.html' },
+        { icon: '⚙️', label: 'Settings', href: '/static/settings.html' }
+    ];
+
+    var currentPath = _getCurrentPath();
+    nav.innerHTML = tabs
+        .filter(function(tab) {
+            return tab.visible !== false;
+        })
+        .map(function(tab) {
+            var activeClass = _isActiveTab(currentPath, tab.href) ? ' active' : '';
+            return '<button class="nav-tab' + activeClass + '" onclick="window.location.href=\'' + tab.href + '\'">' +
+                tab.icon + ' ' + tab.label +
+                '</button>';
+        })
+        .join('');
+}
+
+function applySharedPageVisibility() {
+    var prefs = getUIPreferences();
+    var driveQuickActions = document.querySelectorAll('[data-feature="drive-upload"]');
+    var auditQuickActions = document.querySelectorAll('[data-feature="cloud-audit"]');
+
+    driveQuickActions.forEach(function(el) {
+        el.style.display = prefs.beta_pages.drive_upload ? '' : 'none';
+    });
+
+    auditQuickActions.forEach(function(el) {
+        el.style.display = prefs.beta_pages.cloud_audit ? '' : 'none';
+    });
+}
+
+function applyNavigationPreferences() {
+    renderSharedNav();
+    applySharedPageVisibility();
+}
+
+document.addEventListener('DOMContentLoaded', applyNavigationPreferences);
+
 // ===== VERSION BADGE =====
 
 async function loadVersionBadge() {
@@ -245,6 +341,7 @@ function renderJobCard(job, options) {
     var showDelete = options.showDelete !== false;
     var showProgress = options.showProgress !== false;
     var clickable = options.clickable !== false;
+    var isCloudSync = job.job_type === 'cloud_sync' || job.transfer_direction === 'cloud_to_cloud';
 
     var jobTitle = job.friendly_name || (job.job_id.substring(0, 8) + '...');
     return '<div class="job-item" ' + (clickable ? 'onclick="showJobDetails(\'' + job.job_id + '\')"' : '') + ' style="' + (clickable ? 'cursor: pointer;' : '') + '">' +
@@ -260,7 +357,8 @@ function renderJobCard(job, options) {
             (job.dry_run ? '<span class="job-badge badge-dry-run">\ud83d\udc41\ufe0f DRY-RUN</span>' : '') +
             (job.no_clobber ? '<span class="job-badge badge-rsync">\ud83d\udee1\ufe0f NO-CLOBBER</span>' : '') +
             (job.scheduled_for ? '<span class="job-badge badge-scheduled">\u23f0 SCHEDULED</span>' : '') +
-            '<span class="job-badge badge-local">\ud83d\udcbb LOCAL\u2192CLOUD</span>' +
+            (isCloudSync ? '<span class="job-badge badge-local">\u2601\ufe0f CLOUD\u2192CLOUD</span>' : '<span class="job-badge badge-local">\ud83d\udcbb LOCAL\u2192CLOUD</span>') +
+            (isCloudSync ? '<span class="job-badge badge-rsync">\u2601\ufe0f CLOUD SYNC</span>' : '') +
             (job.split_by_folder ? '<span class="job-badge badge-split">\ud83d\udcc1 SPLIT</span>' : '') +
             (job.recursive ? '<span class="job-badge badge-rsync">\ud83d\udd04 RECURSIVE</span>' : '') +
             (job.auto_retry && job.retry_count > 0 ? '<span class="job-badge badge-scheduled">\ud83d\udd04 RETRY ' + job.retry_count + '</span>' : '') +
@@ -361,14 +459,17 @@ async function showJobDetails(jobId) {
         if (!response.ok) throw new Error('Job not found');
         var job = await response.json();
 
-        var canRetry = ['completed', 'failed', 'cancelled'].indexOf(job.status) !== -1;
-        var canCancel = ['pending', 'queued', 'running', 'scheduled'].indexOf(job.status) !== -1;
+        var isCloudSync = job.job_type === 'cloud_sync' || job.transfer_direction === 'cloud_to_cloud';
+        var canRetry = !isCloudSync && ['completed', 'failed', 'cancelled'].indexOf(job.status) !== -1;
+        var canCancel = !isCloudSync && ['pending', 'queued', 'running', 'scheduled'].indexOf(job.status) !== -1;
         var isDryRun = job.dry_run;
         var uploadTool = job.upload_tool || 'gcloud';
 
         // Build command preview based on upload tool (including filters)
         var command = '';
-        if (uploadTool === 'gsutil') {
+        if (isCloudSync && job.filters && job.filters.display_command) {
+            command = job.filters.display_command;
+        } else if (uploadTool === 'gsutil') {
             command = 'gsutil -m rsync';
             if (job.dry_run) command += ' -n';
             if (job.recursive) command += ' -r';
@@ -400,7 +501,9 @@ async function showJobDetails(jobId) {
                 }
             }
         }
-        command += ' "' + job.source_path + '" "gs://' + job.destination_bucket + '/' + (job.destination_path || '') + '"';
+        if (!isCloudSync || !(job.filters && job.filters.display_command)) {
+            command += ' "' + job.source_path + '" "gs://' + job.destination_bucket + '/' + (job.destination_path || '') + '"';
+        }
 
         var modalBody = document.getElementById('modalBody');
         var html = '';
@@ -411,6 +514,7 @@ async function showJobDetails(jobId) {
         if (job.friendly_name) {
             html += '<div class="detail-item"><span class="detail-label">Job Name</span><span class="detail-text">' + escapeHtml(job.friendly_name) + '</span></div>';
         }
+        html += '<div class="detail-item"><span class="detail-label">Job Type</span><span class="detail-text">' + (isCloudSync ? 'Cloud Sync' : 'Upload') + '</span></div>';
         html += '<div class="detail-item"><span class="detail-label">Job ID</span><span class="detail-text">' + job.job_id + '</span></div>';
         html += '<div class="detail-item"><span class="detail-label">Created</span><span class="detail-text">' + formatDate(job.created_at) + '</span></div>';
         html += '<div class="detail-item"><span class="detail-label">Started</span><span class="detail-text">' + formatDate(job.started_at) + '</span></div>';

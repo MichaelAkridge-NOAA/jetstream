@@ -1,10 +1,9 @@
 /**
- * JetStream - Cloud Transfer Page
- * Cloud-to-cloud transfer with gcloud storage rsync
+ * JetStream - Cloud Sync Page
+ * Cloud-to-cloud sync with gcloud storage rsync
  */
 
 let cloudTransferJobs = {};
-let hiddenTransferIds = new Set();
 
 document.addEventListener('DOMContentLoaded', function() {
     loadCloudTransfers();
@@ -78,6 +77,7 @@ document.getElementById('cloud-transfer-form').addEventListener('submit', async 
     const destBucket = document.getElementById('dest-bucket').value.trim();
     const recursive = document.getElementById('recursive').checked;
     const dryRun = document.getElementById('dry-run').checked;
+    const noClobber = document.getElementById('no-clobber').checked;
     const excludePatterns = document.getElementById('exclude-patterns').value
         .split('\n')
         .map(s => s.trim())
@@ -90,7 +90,7 @@ document.getElementById('cloud-transfer-form').addEventListener('submit', async 
 
     const submitBtn = this.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
-    submitBtn.textContent = '⏳ Starting Transfer...';
+    submitBtn.textContent = '⏳ Starting Sync...';
 
     try {
         const response = await fetch('/api/cloud/transfer', {
@@ -101,6 +101,7 @@ document.getElementById('cloud-transfer-form').addEventListener('submit', async 
                 dest_path: destBucket,
                 recursive: recursive,
                 dry_run: dryRun,
+                no_clobber: noClobber,
                 exclude_patterns: excludePatterns
             })
         });
@@ -108,17 +109,17 @@ document.getElementById('cloud-transfer-form').addEventListener('submit', async 
         const data = await response.json();
 
         if (response.ok) {
-            showToast(dryRun ? 'Dry run started! Check results below.' : 'Transfer started successfully!', 'success');
+            showToast(dryRun ? 'Dry run started! Check results below.' : 'Sync started successfully!', 'success');
             loadCloudTransfers();
         } else {
-            showToast(data.detail || 'Failed to start transfer', 'error');
+            showToast(data.detail || 'Failed to start sync', 'error');
         }
     } catch (error) {
-        console.error('Error starting transfer:', error);
-        showToast('Error starting transfer: ' + error.message, 'error');
+        console.error('Error starting sync:', error);
+        showToast('Error starting sync: ' + error.message, 'error');
     } finally {
         submitBtn.disabled = false;
-        submitBtn.textContent = '🚀 Start Cloud Transfer';
+        submitBtn.textContent = '🚀 Start Cloud Sync';
     }
 });
 
@@ -153,11 +154,10 @@ function renderCloudJobs(jobs) {
     // Update stats
     updateTransferStats(jobs);
 
-    // Filter out hidden jobs
-    const visibleJobs = jobs.filter(job => !hiddenTransferIds.has(job.job_id));
+    const visibleJobs = jobs;
 
     if (!visibleJobs || visibleJobs.length === 0) {
-        container.innerHTML = '<p style="text-align: center; color: #999; padding: 50px 0;">No cloud transfers yet. Use the form to start a transfer.</p>';
+        container.innerHTML = '<p style="text-align: center; color: #999; padding: 50px 0;">No cloud sync jobs yet. Use the form to start a sync.</p>';
         return;
     }
 
@@ -242,6 +242,21 @@ function getStatusIcon(status) {
     }
 }
 
+function formatCloudCommand(command) {
+    if (!command) return 'N/A';
+    return command.replace(/^.*?(?:^|[\\/])gcloud(?:\.cmd|\.exe|\.bat)?(?=\s)/i, 'gcloud');
+}
+
+function formatCloudOutput(output) {
+    if (!output) return '';
+    return output
+        .split('\n')
+        .filter(line => !line.includes('The following characters are invalid in Windows file and directory names'))
+        .filter(line => !/^Renaming [0-9a-f]+\.v_.* to [0-9a-f]+\.v_/i.test(line.trim()))
+        .join('\n')
+        .trim();
+}
+
 // ===== VIEW TRANSFER OUTPUT =====
 
 async function viewTransferOutput(jobId) {
@@ -257,7 +272,7 @@ async function viewTransferOutput(jobId) {
         
         html += `<div class="detail-section"><h3>Status</h3><span class="status-badge ${getStatusClass(job.status)}">${job.status.toUpperCase()}</span>${job.dry_run ? ' <span class="job-badge badge-dry-run">🧪 DRY-RUN</span>' : ''}</div>`;
         
-        html += `<div class="detail-section"><h3>Command</h3><div class="detail-value">${escapeHtml(job.command || 'N/A')}</div></div>`;
+        html += `<div class="detail-section"><h3>Command</h3><div class="detail-value">${escapeHtml(formatCloudCommand(job.command))}</div></div>`;
 
         html += '<div class="detail-section"><h3>Transfer Information</h3><div class="detail-grid">';
         html += `<div class="detail-item"><span class="detail-label">Job ID</span><span class="detail-text">${job.job_id}</span></div>`;
@@ -274,9 +289,10 @@ async function viewTransferOutput(jobId) {
             html += `<div class="detail-section"><h3>Error Message</h3><div class="detail-value" style="color: #991b1b; background: #fee2e2;">${escapeHtml(job.error)}</div></div>`;
         }
 
-        if (job.output) {
+        const cloudOutput = formatCloudOutput(job.output);
+        if (cloudOutput) {
             html += '<div class="detail-section"><h3>Command Output</h3>';
-            html += `<div class="detail-value" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere;">${escapeHtml(job.output)}</div></div>`;
+            html += `<div class="detail-value" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere;">${escapeHtml(cloudOutput)}</div></div>`;
         }
 
         html += '<div class="modal-actions">';
@@ -293,15 +309,23 @@ async function viewTransferOutput(jobId) {
 
 // ===== CLEAR COMPLETED TRANSFERS =====
 
-function clearCompletedTransfers() {
-    // Hide completed and failed jobs from the view
-    Object.values(cloudTransferJobs).forEach(job => {
-        if (job.status === 'completed' || job.status === 'failed') {
-            hiddenTransferIds.add(job.job_id);
+async function clearCompletedTransfers() {
+    if (!confirm('This will hide all completed and failed cloud sync transfers from the recent list. Continue?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/cloud/transfers/clear-completed', { method: 'POST' });
+        const data = await response.json();
+        if (!response.ok) {
+            showToast(data.detail || 'Failed to clear transfers', 'error');
+            return;
         }
-    });
-    
-    // Re-render the job list
-    loadCloudTransfers();
-    showToast('Completed transfers hidden from view', 'success');
+
+        await loadCloudTransfers();
+        showToast(data.message || 'Completed transfers hidden from view', 'success');
+    } catch (error) {
+        console.error('Error clearing transfers:', error);
+        showToast('Failed to clear transfers', 'error');
+    }
 }

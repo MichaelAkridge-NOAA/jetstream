@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloud Transfer - NOAA JetStream</title>
+    <title>Cloud Sync - NOAA JetStream</title>
     <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
@@ -20,7 +20,9 @@
     <div class="nav-tabs">
         <button class="nav-tab" onclick="window.location.href='/'">🏠 Home</button>
         <button class="nav-tab" onclick="window.location.href='/static/uploads.html'">📤 Uploads</button>
-        <button class="nav-tab active" onclick="window.location.href='/static/cloud.html'">☁️ Cloud Transfer</button>
+        <button class="nav-tab" onclick="window.location.href='/static/gdrive.html'">🗂️ Drive Upload</button>
+        <button class="nav-tab active" onclick="window.location.href='/static/cloud.html'">☁️ Cloud Sync</button>
+        <button class="nav-tab" onclick="window.location.href='/static/cloud-audit.html'">🧹 Cloud Audit</button>
         <button class="nav-tab" onclick="window.location.href='/static/jobs.html'">📋 Jobs</button>
         <button class="nav-tab" onclick="window.location.href='/static/analytics.html'">📊 Analytics</button>
         <button class="nav-tab" onclick="window.location.href='/static/settings.html'">⚙️ Settings</button>
@@ -52,7 +54,7 @@
         
         <div class="main-content">
             <div class="panel">
-                <h2>Create Cloud Transfer</h2>
+                <h2>Create Cloud Sync Job</h2>
                 <p style="color: #64748b; margin-bottom: 20px;">
                     Sync data between Google Cloud Storage buckets using gcloud storage rsync.
                 </p>
@@ -105,7 +107,7 @@
                     <!-- Advanced Options Toggle -->
                     <div style="margin: 20px 0; padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleAdvancedOptions()">
-                            <h3 style="margin: 0; font-size: 1em; color: #475569;">⚙️ Advanced Filtering Options</h3>
+                            <h3 style="margin: 0; font-size: 1em; color: #475569;">⚙️ Advanced Options</h3>
                             <span id="advanced-toggle" style="color: #64748b;">▼</span>
                         </div>
                         
@@ -117,6 +119,20 @@
                                     Patterns to exclude. Use wildcards: *.tmp, *.bak
                                 </small>
                             </div>
+
+                            <div style="margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+                                <h4 style="font-size: 0.9em; color: #475569; margin: 0 0 10px 0;">🛡️ Data Protection &amp; Sync Options</h4>
+
+                                <div class="checkbox-group">
+                                    <input type="checkbox" id="no-clobber">
+                                    <label for="no-clobber">
+                                        No-Clobber — skip destination objects that already exist
+                                        <small style="color: #64748b; display: block; margin-top: 2px; font-weight: normal;">
+                                            Adds <code>--no-clobber</code>. Useful when destination data should never be overwritten.
+                                        </small>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
@@ -126,7 +142,7 @@
                         </p>
                     </div>
                     
-                    <button type="submit" class="btn btn-primary" style="margin-top: 20px;">🚀 Start Cloud Transfer</button>
+                    <button type="submit" class="btn btn-primary" style="margin-top: 20px;">🚀 Start Cloud Sync</button>
                 </form>
             </div>
             

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOAA JetStream - Drive Upload</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        .gdrive-grid {
+            display: grid;
+            grid-template-columns: 3fr 2fr;
+            gap: 20px;
+            align-items: start;
+        }
+        .gdrive-left-stack {
+            display: grid;
+            gap: 20px;
+            align-content: start;
+        }
+        @media (max-width: 900px) {
+            .gdrive-grid { grid-template-columns: 1fr; }
+        }
+        .collapsible-panel { padding: 16px 20px; }
+        .collapsible-panel > summary {
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            user-select: none;
+        }
+        .collapsible-panel > summary::-webkit-details-marker { display: none; }
+        .collapsible-panel > summary::before {
+            content: '▶';
+            font-size: 0.72em;
+            color: #94a3b8;
+            transition: transform 0.15s;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+        .collapsible-panel[open] > summary::before { transform: rotate(90deg); }
+        .ctx-badge {
+            font-size: 0.75em;
+            padding: 3px 10px;
+            border-radius: 99px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .ctx-badge.ctx-sync   { background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; }
+        .ctx-badge.ctx-upload { background:#fdf4ff; color:#7e22ce; border:1px solid #e9d5ff; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-inner">
+            <img src="/static/jetstream_logo.png" alt="JetStream Logo" class="header-logo">
+            <div class="header-content">
+                <h1>NOAA JetStream</h1>
+                <p>Cloud Data Management System</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="nav-tabs">
+        <button class="nav-tab" onclick="window.location.href='/'">🏠 Home</button>
+        <button class="nav-tab" onclick="window.location.href='/static/uploads.html'">📤 Uploads</button>
+        <button class="nav-tab active" onclick="window.location.href='/static/gdrive.html'">🗂️ Drive Upload</button>
+        <button class="nav-tab" onclick="window.location.href='/static/cloud.html'">☁️ Cloud Sync</button>
+        <button class="nav-tab" onclick="window.location.href='/static/cloud-audit.html'">🧹 Cloud Audit</button>
+        <button class="nav-tab" onclick="window.location.href='/static/jobs.html'">📋 Jobs</button>
+        <button class="nav-tab" onclick="window.location.href='/static/analytics.html'">📊 Analytics</button>
+        <button class="nav-tab" onclick="window.location.href='/static/settings.html'">⚙️ Settings</button>
+    </div>
+
+    <div class="container">
+
+        <!-- ── Auth status card ─────────────────────────────────────────── -->
+        <div class="panel" id="auth-panel">
+            <h2 style="margin-bottom:16px;">🔐 Google Account</h2>
+
+            <!-- Not configured -->
+            <div id="auth-not-configured" style="display:none;">
+                <div style="padding:16px 20px;background:#fef9c3;border:1px solid #fde047;border-radius:8px;">
+                    <strong style="color:#713f12;">⚠️ OAuth credentials not configured</strong>
+                    <p style="font-size:0.9em;color:#78350f;margin:8px 0 0;">
+                        Set <code>GDRIVE_CLIENT_ID</code> and <code>GDRIVE_CLIENT_SECRET</code> in your
+                        <code>.env</code> file or environment variables, then restart JetStream.
+                    </p>
+                    <details style="margin-top:12px;">
+                        <summary style="cursor:pointer;font-size:0.88em;color:#92400e;font-weight:600;">
+                            How to create OAuth credentials
+                        </summary>
+                        <ol style="font-size:0.85em;color:#78350f;margin:10px 0 0 18px;line-height:1.8;">
+                            <li>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:#1d4ed8;">Google Cloud Console → Credentials</a></li>
+                            <li>Click <strong>Create Credentials → OAuth 2.0 Client ID</strong></li>
+                            <li>Application type: <strong>Web application</strong></li>
+                            <li>Add authorised redirect URI: <code id="redirect-uri-display">http://localhost:8000/api/gdrive/auth/callback</code></li>
+                            <li>Copy the Client ID and Secret into your <code>.env</code>:
+                                <pre style="background:#1e293b;color:#86efac;padding:8px 12px;border-radius:6px;margin-top:6px;font-size:0.9em;">GDRIVE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GDRIVE_CLIENT_SECRET=your-client-secret</pre>
+                            </li>
+                            <li>Restart JetStream and refresh this page.</li>
+                        </ol>
+                    </details>
+                </div>
+            </div>
+
+            <!-- Connected -->
+            <div id="auth-connected" style="display:none;">
+                <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+                    <div style="padding:12px 18px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;flex:1;min-width:220px;">
+                        <span style="color:#15803d;font-weight:600;">✅ Connected</span>
+                        <span id="auth-email" style="color:#166534;margin-left:10px;font-size:0.9em;"></span>
+                    </div>
+                    <button class="btn btn-secondary" onclick="gdriveDisconnect()">🔌 Disconnect</button>
+                </div>
+            </div>
+
+            <!-- Not connected but configured -->
+            <div id="auth-disconnected" style="display:none;">
+                <div style="padding:16px 20px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;">
+                    <strong style="color:#0369a1;">Connect your Google account to upload files to Drive</strong>
+                    <p style="font-size:0.85em;color:#0c4a6e;margin:8px 0 12px;">
+                        Clicking Connect will open Google sign-in. You'll be redirected back here after authorising.
+                    </p>
+                    <a id="auth-connect-btn" href="#" onclick="gdriveConnect();return false;" class="btn btn-primary">
+                        🔗 Connect Google Account
+                    </a>
+                </div>
+            </div>
+
+            <div id="auth-error" style="display:none;margin-top:10px;padding:10px 14px;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;color:#991b1b;font-size:0.9em;"></div>
+        </div>
+
+        <!-- ── Main work area (visible when connected) ──────────────────── -->
+        <div id="work-area" style="display:none;">
+
+            <div class="gdrive-grid">
+
+                <!-- ── Left: Sync + Single file stack ───────────────────── -->
+                <div class="gdrive-left-stack">
+                    <div class="panel" id="sync-panel">
+                        <h2 style="margin-bottom:16px;">🔄 Sync Folder to Drive</h2>
+
+                        <div class="form-group">
+                            <label for="sync-local-folder">Local folder path</label>
+                            <input type="text" id="sync-local-folder"
+                                   placeholder="/data/exports  or  C:\data\exports"
+                                   style="width:100%;">
+                            <small style="color:#64748b;">Absolute path to the local directory to sync.</small>
+                        </div>
+
+                        <div class="form-group" style="margin-top:14px;">
+                            <label>Destination Drive folder
+                                <small style="font-weight:400;color:#64748b;margin-left:6px;">← select a folder in the browser</small>
+                            </label>
+                            <div style="padding:10px 14px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:6px;font-size:0.9em;min-height:38px;word-break:break-all;margin-top:4px;">
+                                <span id="sync-dest-label" style="color:#64748b;">My Drive (root)</span>
+                            </div>
+                            <input type="hidden" id="sync-dest-id" value="root">
+                        </div>
+
+                        <div style="display:flex;gap:20px;margin-top:14px;flex-wrap:wrap;">
+                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                <input type="checkbox" id="sync-recursive" checked>
+                                Include sub-folders
+                            </label>
+                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                <input type="checkbox" id="sync-overwrite">
+                                Replace existing files
+                            </label>
+                        </div>
+
+                        <!-- Advanced options -->
+                        <details style="margin-top:14px;">
+                            <summary style="cursor:pointer;font-size:0.85em;color:#64748b;font-weight:600;user-select:none;list-style:none;">
+                                ⚙ Advanced options
+                            </summary>
+                            <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                <div>
+                                    <label for="sync-concurrency" style="font-size:0.85em;display:block;margin-bottom:4px;">Parallel uploads</label>
+                                    <input type="number" id="sync-concurrency" value="4" min="1" max="16"
+                                           style="width:72px;padding:5px 8px;">
+                                    <div><small style="color:#64748b;">Files at once (1–16)</small></div>
+                                </div>
+                                <div>
+                                    <label for="sync-chunk-mb" style="font-size:0.85em;display:block;margin-bottom:4px;">Chunk size (MB)</label>
+                                    <input type="number" id="sync-chunk-mb" value="8" min="1" max="64"
+                                           style="width:72px;padding:5px 8px;">
+                                    <div><small style="color:#64748b;">Per upload chunk (1–64 MB)</small></div>
+                                </div>
+                            </div>
+                        </details>
+
+                        <button class="btn btn-primary" style="margin-top:16px;width:100%;" onclick="gdriveSync()">
+                            🔄 Sync Folder
+                        </button>
+
+                        <div id="sync-result" style="display:none;margin-top:14px;padding:14px 16px;border-radius:8px;font-size:0.9em;"></div>
+                        <div id="sync-file-list" style="margin-top:8px;max-height:380px;overflow-y:auto;"></div>
+                    </div>
+
+                    <!-- ── Collapsible: Single File Upload ────────────────────────── -->
+                    <details class="panel collapsible-panel" id="upload-details" style="margin-top:0;" open>
+                        <summary>
+                            <span style="font-size:1.05em;font-weight:600;">📤 Single File Upload</span>
+                            <span style="font-size:0.82em;color:#94a3b8;font-weight:400;">— upload one file at a time</span>
+                        </summary>
+                        <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+                            <div>
+                                <div class="form-group">
+                                    <label for="upload-local-path">Local file path</label>
+                                    <input type="text" id="upload-local-path"
+                                           placeholder="/data/my_file.csv  or  C:\data\file.jpg"
+                                           style="width:100%;">
+                                    <small style="color:#64748b;">Absolute path to the file you want to upload.</small>
+                                </div>
+
+                                <div class="form-group" style="margin-top:14px;">
+                                    <label>Destination folder</label>
+                                    <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+                                        <div style="flex:1;padding:8px 12px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:6px;font-size:0.9em;min-height:36px;word-break:break-all;">
+                                            <span id="dest-folder-label" style="color:#64748b;">My Drive (root)</span>
+                                        </div>
+                                        <button class="btn btn-secondary" style="white-space:nowrap;font-size:0.85em;"
+                                                onclick="setBrowserContext('upload')">📂 Use browser</button>
+                                    </div>
+                                    <input type="hidden" id="dest-folder-id" value="root">
+                                    <small style="color:#64748b;">Click "Use browser" then select a folder in the browser panel above.</small>
+                                </div>
+
+                                <div class="form-group" style="margin-top:14px;">
+                                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                        <input type="checkbox" id="upload-overwrite">
+                                        Replace existing file with same name
+                                    </label>
+                                </div>
+
+                                <button class="btn btn-primary" style="margin-top:8px;" onclick="gdriveUpload()">
+                                    ⬆️ Upload
+                                </button>
+                            </div>
+
+                            <div>
+                                <div id="upload-result" style="display:none;padding:14px 16px;border-radius:8px;font-size:0.9em;"></div>
+                                <div id="upload-history" style="margin-top:8px;"></div>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+
+                <!-- ── Right: Drive Browser (always visible) ─────────────── -->
+                <div class="panel" id="browser-panel">
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                        <h2 style="margin:0;font-size:1.1em;">📂 Drive Browser</h2>
+                        <span class="ctx-badge ctx-sync" id="browser-ctx-badge">→ Sync dest</span>
+                    </div>
+
+                    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+                        <button class="btn btn-secondary" id="browser-up-btn" onclick="browserUp()" style="display:none;font-size:0.85em;">⬆ Up</button>
+                        <button class="btn btn-secondary" onclick="goRoot()" style="font-size:0.85em;">🏠 Root</button>
+                        <button class="btn btn-secondary" onclick="refreshBrowser()" style="font-size:0.85em;">↺ Refresh</button>
+                    </div>
+
+                    <div id="browser-breadcrumb" style="font-size:0.82em;color:#64748b;margin-bottom:10px;min-height:18px;"></div>
+
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%;border-collapse:collapse;font-size:0.86em;">
+                            <thead>
+                                <tr style="background:#f1f5f9;text-align:left;">
+                                    <th style="padding:7px 10px;border-bottom:1px solid #e2e8f0;">Name</th>
+                                    <th style="padding:7px 10px;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Size</th>
+                                    <th style="padding:7px 10px;border-bottom:1px solid #e2e8f0;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="browser-tbody">
+                                <tr><td colspan="3" style="padding:24px;text-align:center;color:#94a3b8;">Loading…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="browser-pager" style="margin-top:10px;text-align:right;display:none;">
+                        <button class="btn btn-secondary" id="browser-next-btn" onclick="browserNextPage()" style="font-size:0.85em;">Next page →</button>
+                    </div>
+                </div>
+
+            </div><!-- /gdrive-grid -->
+
+        </div><!-- /work-area -->
+
+    </div><!-- /container -->
+
+    <script src="/static/js/shared.js"></script>
+    <script src="/static/js/gdrive.js?v=4"></script>
+</body>
+</html>

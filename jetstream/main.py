@@ -38,7 +38,15 @@ from .database import init_db, close_db
 from .config import settings
 from .scheduler import scheduler
 
-# Import cloud_analyzer separately with error handling to prevent startup crashes
+# Import native Google Drive API router
+try:
+    from .routers import gdrive as gdrive_router
+    GDRIVE_ROUTER_AVAILABLE = True
+except Exception as _gdrive_e:
+    gdrive_router = None
+    GDRIVE_ROUTER_AVAILABLE = False
+
+# Import cloud analyzer separately with error handling to prevent startup crashes
 try:
     from .routers import cloud_analyzer
     CLOUD_ANALYZER_AVAILABLE = True
@@ -48,11 +56,22 @@ except Exception as e:
     cloud_analyzer = None
     CLOUD_ANALYZER_AVAILABLE = False
 
+# Import cloud_audit separately with error handling to prevent startup crashes
+try:
+    from .routers import cloud_audit
+    CLOUD_AUDIT_AVAILABLE = True
+except Exception as e:
+    logger = logging.getLogger(__name__)
+    logger.warning(f"Cloud audit disabled due to import error: {e}")
+    cloud_audit = None
+    CLOUD_AUDIT_AVAILABLE = False
+
 # Configure logging to be very verbose
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+logging.getLogger("watchfiles.main").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # Log import success
@@ -157,11 +176,18 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Parse configured CORS origins once at startup.
+cors_origins = [
+    origin.strip()
+    for origin in settings.CORS_ALLOW_ORIGINS.split(",")
+    if origin.strip()
+]
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -180,7 +206,20 @@ if CLOUD_ANALYZER_AVAILABLE:
 else:
     logger.warning("[WARN] Cloud analyzer router disabled")
 
+if CLOUD_AUDIT_AVAILABLE:
+    app.include_router(cloud_audit.router, prefix="/api/cloud-audit", tags=["Cloud Audit"])
+    logger.info("[OK] Cloud audit router enabled")
+else:
+    logger.warning("[WARN] Cloud audit router disabled")
+
 app.include_router(settings_router.router, prefix="/api/settings", tags=["Settings"])
+
+# Include native Google Drive API router
+if GDRIVE_ROUTER_AVAILABLE:
+    app.include_router(gdrive_router.router, prefix="/api/gdrive", tags=["Google Drive (Native)"])
+    logger.info("[OK] Native GDrive router enabled")
+else:
+    logger.warning("[WARN] Native GDrive router disabled (check google-api-python-client install)")
 
 # Serve static files (dashboard)
 # Use package-relative path for static files
@@ -196,15 +235,26 @@ try:
 except Exception as e:
     logger.warning(f"Could not mount static files: {e}")
 
+
+def get_static_page_path(filename: str) -> Path:
+    """Resolve a static HTML page path for installed and development layouts."""
+    import jetstream
+
+    page_path = Path(jetstream.__file__).parent / "static" / filename
+    if not page_path.exists():
+        page_path = Path("jetstream/static") / filename
+    return page_path
+
+
+def serve_static_page(filename: str) -> FileResponse:
+    """Serve a static HTML page."""
+    return FileResponse(str(get_static_page_path(filename)))
+
 @app.get("/", response_class=HTMLResponse)
 async def root():
     """Serve the main dashboard."""
     try:
-        import jetstream
-        index_path = Path(jetstream.__file__).parent / "static" / "index.html"
-        if not index_path.exists():
-            index_path = Path("jetstream/static/index.html")
-        return FileResponse(str(index_path))
+        return serve_static_page("index.html")
     except FileNotFoundError:
         return """
         <html>
@@ -216,6 +266,48 @@ async def root():
             </body>
         </html>
         """
+
+
+@app.get("/uploads")
+async def uploads_page():
+    """Serve the uploads page."""
+    return serve_static_page("uploads.html")
+
+
+@app.get("/analytics")
+async def analytics_page():
+    """Serve the analytics page."""
+    return serve_static_page("analytics.html")
+
+
+@app.get("/jobs")
+async def jobs_page():
+    """Serve the jobs page."""
+    return serve_static_page("jobs.html")
+
+
+@app.get("/settings")
+async def settings_page():
+    """Serve the settings page."""
+    return serve_static_page("settings.html")
+
+
+@app.get("/gdrive")
+async def gdrive_page():
+    """Serve the Google Drive page."""
+    return serve_static_page("gdrive.html")
+
+
+@app.get("/cloud")
+async def cloud_page():
+    """Serve the cloud transfer page."""
+    return serve_static_page("cloud.html")
+
+
+@app.get("/cloud-audit")
+async def cloud_audit_page():
+    """Serve the cloud audit page."""
+    return serve_static_page("cloud-audit.html")
 
 @app.get("/api/version")
 async def get_version():
@@ -235,9 +327,12 @@ async def health_check():
     }
 
 if __name__ == "__main__":
+    reload_dir = str(Path(__file__).resolve().parent)
     uvicorn.run(
         "jetstream.main:app",
         host=settings.HOST,
         port=settings.PORT,
-        reload=settings.DEBUG
+        reload=settings.DEBUG,
+        reload_dirs=[reload_dir] if settings.DEBUG else None,
+        reload_excludes=[".git", ".git/*", "**/.git/**", ".browser_lock", "*.lock"] if settings.DEBUG else None,
     )
