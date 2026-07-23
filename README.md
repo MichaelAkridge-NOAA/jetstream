@@ -30,7 +30,7 @@ A comprehensive web-based application for managing Google Cloud Storage uploads 
 ---
 ### Google Cloud Setup
 
-Required only for cloud upload features:
+Required for Google Cloud upload features:
 ```bash
 # Install Google Cloud SDK
 # Download from: https://cloud.google.com/sdk/docs/install
@@ -43,6 +43,13 @@ gcloud auth application-default login --no-launch-browser
 gsutil ls
 gcloud auth list
 ```
+> **⚠️ Important:** If you encounter a `Reauthentication required.` error, Google requires rotating or re-authenticating credentials at unspecified times. 
+> 
+> To fix this, simply log out and log back in by running:
+> ```bash
+> gcloud auth revoke firstname.lastname@noaa.gov
+> gcloud auth login
+>```
 
 ### Installation
 #### Option 1: Install from PyPI (Recommended)
