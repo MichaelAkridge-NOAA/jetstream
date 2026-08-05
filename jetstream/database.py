@@ -274,6 +274,107 @@ class CloudAuditFinding(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
+
+class LocalAuditRun(Base):
+    """Model for local filesystem audit runs."""
+    __tablename__ = "local_audit_runs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    run_id = Column(String, unique=True, index=True)
+    status = Column(String, default="running")  # queued, running, completed, failed, cancelled
+    target_path = Column(String, nullable=False, index=True)
+
+    # Scan options and metadata
+    recursive = Column(Boolean, default=True)
+    scan_mode = Column(String, default="detailed")
+    max_detailed_files = Column(Integer, default=0)
+    detailed_truncated = Column(Boolean, default=False)
+    skip_permission_count = Column(Integer, default=0)
+
+    # Aggregates
+    total_files = Column(Integer, default=0)
+    total_size_bytes = Column(Float, default=0.0)
+    subfolder_count = Column(Integer, default=0)
+    file_types = Column(JSON, nullable=True)
+    top_level_folders = Column(JSON, nullable=True)
+    recommendations = Column(JSON, nullable=True)
+
+    # Timing and errors
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    started_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    completed_at = Column(DateTime, nullable=True)
+    scan_duration_seconds = Column(Float, default=0.0)
+    error_message = Column(Text, nullable=True)
+
+    def to_dict(self):
+        """Convert to dictionary."""
+        def format_dt(dt):
+            if not dt:
+                return None
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            else:
+                dt = dt.astimezone(timezone.utc)
+            return dt.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+
+        return {
+            "id": self.id,
+            "run_id": self.run_id,
+            "status": self.status,
+            "target_path": self.target_path,
+            "recursive": self.recursive,
+            "scan_mode": self.scan_mode,
+            "max_detailed_files": self.max_detailed_files,
+            "detailed_truncated": bool(self.detailed_truncated),
+            "skip_permission_count": int(self.skip_permission_count or 0),
+            "total_files": int(self.total_files or 0),
+            "total_size_bytes": float(self.total_size_bytes or 0.0),
+            "subfolder_count": int(self.subfolder_count or 0),
+            "file_types": self.file_types or {},
+            "top_level_folders": self.top_level_folders or [],
+            "recommendations": self.recommendations or [],
+            "created_at": format_dt(self.created_at),
+            "started_at": format_dt(self.started_at),
+            "completed_at": format_dt(self.completed_at),
+            "scan_duration_seconds": float(self.scan_duration_seconds or 0.0),
+            "error_message": self.error_message,
+        }
+
+
+class LocalAuditFinding(Base):
+    """Model for local audit detailed file findings."""
+    __tablename__ = "local_audit_findings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    run_id = Column(String, index=True)
+    top_level_folder = Column(String, index=True)
+    relative_path = Column(String, nullable=False, index=True)
+    file_name = Column(String, nullable=False)
+    extension = Column(String, default="")
+    file_category = Column(String, default="other")
+    size_bytes = Column(Float, default=0.0)
+    modified_at = Column(DateTime, nullable=True)
+    age_days = Column(Integer, default=0)
+    is_temp = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self):
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "run_id": self.run_id,
+            "top_level_folder": self.top_level_folder,
+            "relative_path": self.relative_path,
+            "file_name": self.file_name,
+            "extension": self.extension,
+            "file_category": self.file_category,
+            "size_bytes": float(self.size_bytes or 0.0),
+            "modified_at": self.modified_at.isoformat() if self.modified_at else None,
+            "age_days": int(self.age_days or 0),
+            "is_temp": bool(self.is_temp),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
 def _run_migrations():
     """Run database migrations for schema changes."""
     if SessionLocal is None or engine is None:
@@ -303,6 +404,16 @@ def _run_migrations():
             print("⚙ Running migration: Creating 'cloud_audit_findings' table...")
             CloudAuditFinding.__table__.create(bind=engine, checkfirst=True)
             print("✓ Migration completed: cloud_audit_findings table created")
+
+        if 'local_audit_runs' not in tables:
+            print("⚙ Running migration: Creating 'local_audit_runs' table...")
+            LocalAuditRun.__table__.create(bind=engine, checkfirst=True)
+            print("✓ Migration completed: local_audit_runs table created")
+
+        if 'local_audit_findings' not in tables:
+            print("⚙ Running migration: Creating 'local_audit_findings' table...")
+            LocalAuditFinding.__table__.create(bind=engine, checkfirst=True)
+            print("✓ Migration completed: local_audit_findings table created")
 
         columns = [col['name'] for col in inspector.get_columns('upload_jobs')]
         
@@ -481,6 +592,23 @@ def _recover_stuck_jobs():
 
             db.commit()
             print("✓ Recovered stuck cloud audit runs")
+
+        # Find local audit runs that were interrupted by restart.
+        stuck_local_runs = db.query(LocalAuditRun).filter(
+            LocalAuditRun.status.in_(['queued', 'running'])
+        ).all()
+
+        if stuck_local_runs:
+            print(f"⚠ Found {len(stuck_local_runs)} stuck local audit runs from previous session")
+
+            for run in stuck_local_runs:
+                run.status = 'failed'
+                run.error_message = 'Server restarted while local audit run was in progress'
+                run.completed_at = datetime.now(timezone.utc)
+                print(f"  - Reset local audit run {run.run_id} to 'failed'")
+
+            db.commit()
+            print("✓ Recovered stuck local audit runs")
     except Exception as e:
         print(f"❌ Error recovering stuck jobs: {e}")
     finally:

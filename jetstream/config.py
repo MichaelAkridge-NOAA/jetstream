@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     ]
     GCS_AUDIT_SCAN_MAX_OBJECTS: int = 250000
     GCS_AUDIT_FINDINGS_PAGE_SIZE: int = 200
+
+    # Local audit defaults
+    LOCAL_AUDIT_MAX_DETAILED_FILES: int = 20000
+    LOCAL_AUDIT_SCAN_MAX_SECONDS: int = 120
+    LOCAL_AUDIT_DOCS_DOMINANCE_PCT: float = 0.60
+    LOCAL_AUDIT_MEDIA_DOMINANCE_PCT: float = 0.60
+    LOCAL_AUDIT_ARCHIVE_AGE_DAYS: int = 365
+    LOCAL_AUDIT_ARCHIVE_MIN_SIZE_MB: int = 250
     
     # Scanner Performance Settings (Optimized for very large folders)
     MAX_FILES_FOR_DETAILED_SCAN: int = 1000   # Switch to folder-only after this
