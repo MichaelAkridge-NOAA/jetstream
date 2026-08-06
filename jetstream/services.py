@@ -8,7 +8,7 @@ import uuid
 import random
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple, Callable
-from datetime import datetime
+from datetime import datetime, timezone
 from collections import defaultdict
 import asyncio
 import time
@@ -474,6 +474,308 @@ class FolderAnalyzer:
             logger.error(f"Cannot access directory {path}: {e}")
         
         return subfolders
+
+
+class LocalAuditService:
+    """Service for local filesystem audits and recommendation generation."""
+
+    DOC_EXTENSIONS = {
+        '.doc', '.docx', '.pdf', '.txt', '.rtf', '.odt', '.xls', '.xlsx',
+        '.csv', '.ppt', '.pptx', '.md'
+    }
+    MEDIA_EXTENSIONS = {
+        '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tif', '.tiff', '.webp',
+        '.mp4', '.mov', '.avi', '.mkv', '.mp3', '.wav'
+    }
+    DATA_EXTENSIONS = {
+        '.json', '.xml', '.parquet', '.feather', '.avro', '.sqlite', '.db',
+        '.zip', '.gz', '.tar', '.7z', '.ndjson'
+    }
+    TEMP_EXTENSIONS = {'.tmp', '.temp', '.bak', '.old', '.log', '.dmp', '.cache'}
+
+    @staticmethod
+    def _all_files_filter() -> FileFilter:
+        return FileFilter(
+            include_patterns=[r'^.*$'],
+            exclude_patterns=[],
+            exclude_folders=[]
+        )
+
+    @staticmethod
+    def validate_windows_local_path(path: str) -> str:
+        """Validate and normalize a Windows local drive/folder path."""
+        raw = (path or '').strip().strip('"').strip("'")
+        if not raw:
+            raise ValueError("Path is required")
+
+        normalized = os.path.normpath(raw)
+
+        # Reject UNC/network paths for v1.
+        if normalized.startswith('\\\\'):
+            raise ValueError("UNC/network paths are not supported in v1")
+
+        # Require local drive paths like C:\\ or D:\\folder.
+        if not re.match(r'^[A-Za-z]:\\', normalized + ('\\' if re.match(r'^[A-Za-z]:$', normalized) else '')):
+            raise ValueError("Path must be a local Windows drive or folder (example: T:\\\\)")
+
+        if re.match(r'^[A-Za-z]:$', normalized):
+            normalized = normalized + '\\'
+
+        if not os.path.exists(normalized):
+            raise ValueError(f"Path does not exist: {normalized}")
+        if not os.path.isdir(normalized):
+            raise ValueError(f"Path is not a directory: {normalized}")
+
+        return normalized
+
+    @classmethod
+    def categorize_extension(cls, extension: str) -> str:
+        ext = (extension or '').lower()
+        if ext in cls.DOC_EXTENSIONS:
+            return 'docs'
+        if ext in cls.MEDIA_EXTENSIONS:
+            return 'media'
+        if ext in cls.DATA_EXTENSIONS:
+            return 'data'
+        if ext in cls.TEMP_EXTENSIONS:
+            return 'temp'
+        return 'other'
+
+    @classmethod
+    def _safe_file_info(cls, file_path: str):
+        try:
+            stat = os.stat(file_path)
+            modified = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
+            age_days = int((datetime.now(timezone.utc) - modified).total_seconds() // 86400)
+            extension = os.path.splitext(file_path)[1].lower() or 'no_extension'
+            return {
+                'size_bytes': float(stat.st_size or 0.0),
+                'modified_at': modified,
+                'age_days': max(age_days, 0),
+                'extension': extension,
+                'file_category': cls.categorize_extension(extension),
+                'is_temp': cls.categorize_extension(extension) == 'temp',
+            }
+        except (OSError, PermissionError):
+            return None
+
+    @classmethod
+    def run_scan(cls, target_path: str, recursive: bool = True) -> Dict:
+        """Run a local audit and return summary, folder breakdown, and detailed findings."""
+        normalized_path = cls.validate_windows_local_path(target_path)
+        started = time.time()
+        skipped_permissions = 0
+
+        analyzer = FolderAnalyzer(file_filter=cls._all_files_filter())
+        summary = analyzer.analyze(normalized_path, recursive=recursive)
+
+        top_level_folders = []
+        root_file_types = defaultdict(int)
+        root_files = 0
+        root_size = 0.0
+
+        try:
+            with os.scandir(normalized_path) as entries:
+                for entry in entries:
+                    try:
+                        if entry.is_dir(follow_symlinks=False):
+                            folder_stats = analyzer.analyze(entry.path, recursive=True)
+                            top_level_folders.append({
+                                'name': entry.name,
+                                'path': entry.path,
+                                'total_files': int(folder_stats.get('total_files', 0)),
+                                'total_size_bytes': float(folder_stats.get('total_size_bytes', 0.0)),
+                                'file_types': folder_stats.get('file_types', {}),
+                                'scan_mode': folder_stats.get('scan_mode', 'detailed'),
+                            })
+                        elif entry.is_file(follow_symlinks=False):
+                            info = cls._safe_file_info(entry.path)
+                            if info:
+                                root_files += 1
+                                root_size += info['size_bytes']
+                                root_file_types[info['extension']] += 1
+                    except (OSError, PermissionError):
+                        skipped_permissions += 1
+                        continue
+        except (OSError, PermissionError):
+            skipped_permissions += 1
+
+        top_level_folders.append({
+            'name': '(root)',
+            'path': normalized_path,
+            'total_files': root_files,
+            'total_size_bytes': root_size,
+            'file_types': dict(root_file_types),
+            'scan_mode': 'detailed',
+        })
+
+        top_level_folders.sort(key=lambda row: float(row.get('total_size_bytes', 0.0)), reverse=True)
+
+        detailed_cap = int(settings.LOCAL_AUDIT_MAX_DETAILED_FILES)
+        timeout_seconds = int(settings.LOCAL_AUDIT_SCAN_MAX_SECONDS)
+        detailed_findings = []
+        detailed_truncated = False
+
+        def _on_walk_error(_err):
+            nonlocal skipped_permissions
+            skipped_permissions += 1
+
+        for root, _dirs, files in os.walk(normalized_path, onerror=_on_walk_error):
+            if not recursive and root != normalized_path:
+                continue
+
+            for file_name in files:
+                if len(detailed_findings) >= detailed_cap:
+                    detailed_truncated = True
+                    break
+
+                if time.time() - started > timeout_seconds:
+                    detailed_truncated = True
+                    break
+
+                file_path = os.path.join(root, file_name)
+                info = cls._safe_file_info(file_path)
+                if not info:
+                    skipped_permissions += 1
+                    continue
+
+                relative_path = os.path.relpath(file_path, normalized_path)
+                first_part = relative_path.split(os.sep, 1)[0]
+                top_level_folder = '(root)' if first_part == file_name else first_part
+
+                detailed_findings.append({
+                    'top_level_folder': top_level_folder,
+                    'relative_path': relative_path,
+                    'file_name': file_name,
+                    'extension': info['extension'],
+                    'file_category': info['file_category'],
+                    'size_bytes': info['size_bytes'],
+                    'modified_at': info['modified_at'],
+                    'age_days': info['age_days'],
+                    'is_temp': info['is_temp'],
+                })
+
+            if detailed_truncated:
+                break
+
+        recommendations = cls.generate_recommendations(
+            total_files=int(summary.get('total_files', 0)),
+            total_size_bytes=float(summary.get('total_size_bytes', 0.0)),
+            file_types=summary.get('file_types', {}) or {},
+            findings=detailed_findings,
+            top_level_folders=top_level_folders,
+        )
+
+        return {
+            'target_path': normalized_path,
+            'summary': summary,
+            'top_level_folders': top_level_folders,
+            'detailed_findings': detailed_findings,
+            'detailed_truncated': detailed_truncated,
+            'max_detailed_files': detailed_cap,
+            'skip_permission_count': skipped_permissions,
+            'scan_duration_seconds': round(time.time() - started, 2),
+            'recommendations': recommendations,
+        }
+
+    @classmethod
+    def generate_recommendations(
+        cls,
+        total_files: int,
+        total_size_bytes: float,
+        file_types: Dict[str, int],
+        findings: List[Dict],
+        top_level_folders: List[Dict],
+    ) -> List[Dict]:
+        """Generate read-only recommendations based on scan stats."""
+        recommendations = []
+        safe_total_files = max(total_files, 1)
+
+        temp_count = 0
+        docs_count = 0
+        media_data_count = 0
+        for extension, count in (file_types or {}).items():
+            category = cls.categorize_extension(extension)
+            if category == 'temp':
+                temp_count += int(count or 0)
+            elif category == 'docs':
+                docs_count += int(count or 0)
+            elif category in {'media', 'data'}:
+                media_data_count += int(count or 0)
+
+        if temp_count > 0:
+            temp_pct = (temp_count / safe_total_files) * 100
+            recommendations.append({
+                'kind': 'cleanup_temp_files',
+                'priority': 'high' if temp_pct >= 10 else 'medium',
+                'title': 'Review temporary/junk files for cleanup',
+                'reason': f'{temp_count} temporary-like files detected ({temp_pct:.1f}% of scanned files).',
+            })
+
+        docs_ratio = docs_count / safe_total_files
+        if docs_ratio >= float(settings.LOCAL_AUDIT_DOCS_DOMINANCE_PCT):
+            recommendations.append({
+                'kind': 'docs_to_shared_drive',
+                'priority': 'medium',
+                'title': 'Consider moving document-heavy content to Google Shared Drive',
+                'reason': f'Documents represent {docs_ratio * 100:.1f}% of scanned files.',
+            })
+
+        media_ratio = media_data_count / safe_total_files
+        if media_ratio >= float(settings.LOCAL_AUDIT_MEDIA_DOMINANCE_PCT):
+            recommendations.append({
+                'kind': 'media_data_to_gcs',
+                'priority': 'medium',
+                'title': 'Consider moving media/data-heavy content to Google Cloud Storage buckets',
+                'reason': f'Media/data files represent {media_ratio * 100:.1f}% of scanned files.',
+            })
+
+        archive_age_days = int(settings.LOCAL_AUDIT_ARCHIVE_AGE_DAYS)
+        archive_min_size_bytes = int(settings.LOCAL_AUDIT_ARCHIVE_MIN_SIZE_MB) * 1024 * 1024
+        old_large = [
+            item for item in findings
+            if int(item.get('age_days', 0)) >= archive_age_days
+            and float(item.get('size_bytes', 0.0)) >= archive_min_size_bytes
+        ]
+        if old_large:
+            old_large_bytes = sum(float(item.get('size_bytes', 0.0)) for item in old_large)
+            recommendations.append({
+                'kind': 'archive_large_old_files',
+                'priority': 'medium',
+                'title': 'Archive large and old files',
+                'reason': (
+                    f'{len(old_large)} files are older than {archive_age_days} days '
+                    f'and larger than {settings.LOCAL_AUDIT_ARCHIVE_MIN_SIZE_MB} MB '
+                    f'({old_large_bytes / (1024**3):.2f} GB total).'
+                ),
+            })
+
+        if not recommendations:
+            recommendations.append({
+                'kind': 'no_action_needed',
+                'priority': 'low',
+                'title': 'No immediate optimization recommendations',
+                'reason': (
+                    f'Scanned {total_files} files totaling {total_size_bytes / (1024**3):.2f} GB '
+                    'without crossing current recommendation thresholds.'
+                ),
+            })
+
+        # Provide folder-level hint for top storage contributors.
+        heavy_folders = [f for f in top_level_folders if f.get('name') != '(root)']
+        heavy_folders = sorted(heavy_folders, key=lambda row: float(row.get('total_size_bytes', 0.0)), reverse=True)[:3]
+        if heavy_folders:
+            recommendations.append({
+                'kind': 'top_folders_for_review',
+                'priority': 'low',
+                'title': 'Prioritize largest folders for in-depth review',
+                'reason': ', '.join(
+                    f"{row['name']} ({float(row.get('total_size_bytes', 0.0)) / (1024**3):.2f} GB)"
+                    for row in heavy_folders
+                ),
+            })
+
+        return recommendations
 
 # Progress line patterns for gcloud storage rsync output (Issue #12)
 _PROGRESS_RE = re.compile(

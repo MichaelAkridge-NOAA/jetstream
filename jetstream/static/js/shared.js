@@ -41,7 +41,8 @@ var DEFAULT_UI_PREFERENCES = {
     confirm_delete: true,
     beta_pages: {
         drive_upload: false,
-        cloud_audit: false
+        cloud_audit: false,
+        local_audit: false
     }
 };
 
@@ -61,7 +62,8 @@ function getUIPreferences() {
         confirm_delete: prefs.confirm_delete !== false,
         beta_pages: {
             drive_upload: beta.drive_upload === true,
-            cloud_audit: beta.cloud_audit === true
+            cloud_audit: beta.cloud_audit === true,
+            local_audit: beta.local_audit === true
         }
     };
 }
@@ -88,6 +90,7 @@ function renderSharedNav() {
         { icon: '🗂️', label: 'Drive Upload', href: '/static/gdrive.html', visible: prefs.beta_pages.drive_upload },
         { icon: '☁️', label: 'Cloud Sync', href: '/static/cloud.html' },
         { icon: '🧹', label: 'Cloud Audit', href: '/static/cloud-audit.html', visible: prefs.beta_pages.cloud_audit },
+        { icon: '🗄️', label: 'Local Audit', href: '/static/local-audit.html', visible: prefs.beta_pages.local_audit },
         { icon: '📋', label: 'Jobs', href: '/static/jobs.html' },
         { icon: '📊', label: 'Analytics', href: '/static/analytics.html' },
         { icon: '⚙️', label: 'Settings', href: '/static/settings.html' }
@@ -111,6 +114,7 @@ function applySharedPageVisibility() {
     var prefs = getUIPreferences();
     var driveQuickActions = document.querySelectorAll('[data-feature="drive-upload"]');
     var auditQuickActions = document.querySelectorAll('[data-feature="cloud-audit"]');
+    var localAuditQuickActions = document.querySelectorAll('[data-feature="local-audit"]');
 
     driveQuickActions.forEach(function(el) {
         el.style.display = prefs.beta_pages.drive_upload ? '' : 'none';
@@ -118,6 +122,10 @@ function applySharedPageVisibility() {
 
     auditQuickActions.forEach(function(el) {
         el.style.display = prefs.beta_pages.cloud_audit ? '' : 'none';
+    });
+
+    localAuditQuickActions.forEach(function(el) {
+        el.style.display = prefs.beta_pages.local_audit ? '' : 'none';
     });
 }
 

@@ -33,7 +33,7 @@ import os
 import time
 import logging
 
-from .routers import uploads, stats, queue, folders, analytics, settings as settings_router
+from .routers import uploads, stats, queue, folders, analytics, settings as settings_router, local_audit
 from .database import init_db, close_db
 from .config import settings
 from .scheduler import scheduler
@@ -204,6 +204,7 @@ app.include_router(stats.router, prefix="/api/stats", tags=["Statistics"])
 app.include_router(queue.router, prefix="/api/queue", tags=["Queue"])
 app.include_router(folders.router, prefix="/api/folders", tags=["Folders"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
+app.include_router(local_audit.router, prefix="/api/local-audit", tags=["Local Audit"])
 
 # Include cloud analyzer only if it loaded successfully
 if CLOUD_ANALYZER_AVAILABLE:
@@ -317,6 +318,12 @@ async def cloud_page():
 async def cloud_audit_page():
     """Serve the cloud audit page."""
     return serve_static_page("cloud-audit.html")
+
+
+@app.get("/local-audit")
+async def local_audit_page():
+    """Serve the local audit page."""
+    return serve_static_page("local-audit.html")
 
 @app.get("/api/version")
 async def get_version():

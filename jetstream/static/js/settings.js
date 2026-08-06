@@ -106,7 +106,8 @@ function saveUIPreferences() {
         confirm_delete: document.getElementById('setting-confirm-delete').checked,
         beta_pages: {
             drive_upload: document.getElementById('setting-beta-drive-upload').checked,
-            cloud_audit: document.getElementById('setting-beta-cloud-audit').checked
+            cloud_audit: document.getElementById('setting-beta-cloud-audit').checked,
+            local_audit: document.getElementById('setting-beta-local-audit').checked
         }
     };
     localStorage.setItem('uiPreferences', JSON.stringify(uiPrefs));
@@ -134,9 +135,11 @@ function loadUIPreferencesFromStorage() {
             document.getElementById('setting-confirm-delete').checked = prefs.confirm_delete !== false;
             document.getElementById('setting-beta-drive-upload').checked = betaPages.drive_upload === true;
             document.getElementById('setting-beta-cloud-audit').checked = betaPages.cloud_audit === true;
+            document.getElementById('setting-beta-local-audit').checked = betaPages.local_audit === true;
         } catch (e) { /* ignore */ }
     } else {
         document.getElementById('setting-beta-drive-upload').checked = false;
         document.getElementById('setting-beta-cloud-audit').checked = false;
+        document.getElementById('setting-beta-local-audit').checked = false;
     }
 }
