@@ -278,7 +278,7 @@ class JobCreateScreen(Screen):
                     yield Label("Schedule For (local time, optional)", classes="field-label")
                     with Horizontal(classes="dt-input-row"):
                         yield Input(placeholder="2026-05-10T14:00:00", id="scheduled-for")
-                        yield Button("📅", id="btn-pick-dt", variant="default")
+                        yield Button("📅", id="btn-pick-dt", variant="default", tooltip="Open date/time picker")
 
                 with Horizontal(classes="switch-pair"):
                     with Vertical():
@@ -295,11 +295,11 @@ class JobCreateScreen(Screen):
                 yield Label("─ FILE FILTERING ─", classes="col-head")
 
                 with Horizontal(id="preset-row"):
-                    yield Button("🗑️ Temp",    id="preset-temp",   classes="preset-btn", variant="default")
-                    yield Button("💻 System",  id="preset-system", classes="preset-btn", variant="default")
-                    yield Button("🐟 PIFSC",   id="preset-pifsc",  classes="preset-btn", variant="default")
-                    yield Button("🚫 No RAW",  id="preset-noraw",  classes="preset-btn", variant="default")
-                    yield Button("❌ Clear",   id="preset-clear",  classes="preset-btn", variant="error")
+                    yield Button("🗑️ Temp",    id="preset-temp",   classes="preset-btn", variant="default", tooltip="Exclude temporary and backup files (*.tmp, *.bak, *.swp, ~$*, Thumbs.db, desktop.ini)")
+                    yield Button("💻 System",  id="preset-system", classes="preset-btn", variant="default", tooltip="Exclude system and version control folders (.git, .svn, __pycache__, etc.)")
+                    yield Button("🐟 PIFSC",   id="preset-pifsc",  classes="preset-btn", variant="default", tooltip="PIFSC standard exclusions (includes _archive, MISC, DARK, Products folders)")
+                    yield Button("🚫 No RAW",  id="preset-noraw",  classes="preset-btn", variant="default", tooltip="Exclude camera RAW files (*.ARW, *.NEF, *.CR2, etc.)")
+                    yield Button("❌ Clear",   id="preset-clear",  classes="preset-btn", variant="error", tooltip="Clear all exclusion patterns and folders")
 
                 with Vertical(classes="field-row"):
                     yield Label("Exclude Patterns (comma-separated)", classes="field-label")
