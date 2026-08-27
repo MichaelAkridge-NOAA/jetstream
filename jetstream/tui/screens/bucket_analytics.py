@@ -120,7 +120,8 @@ class BucketAnalyticsScreen(Screen):
 
     /* ── stat cards row ── */
     #stats-row {
-        height: 7;
+        height: auto;
+        min-height: 7;
         layout: horizontal;
         padding: 0 1;
     }
@@ -187,6 +188,38 @@ class BucketAnalyticsScreen(Screen):
         padding: 0 1;
         border-left: tall $panel-darken-1;
     }
+
+    /* Responsive adjustments */
+    BucketAnalyticsScreen.-hide-cards #stats-row {
+        display: none;
+    }
+    BucketAnalyticsScreen.-vertical-panels #panels-row {
+        layout: vertical;
+        height: auto;
+    }
+    BucketAnalyticsScreen.-vertical-panels #left-col,
+    BucketAnalyticsScreen.-vertical-panels #right-col {
+        width: 100%;
+        height: auto;
+        border-left: none;
+    }
+    BucketAnalyticsScreen.-vertical-panels #panel-folders,
+    BucketAnalyticsScreen.-vertical-panels #panel-sizedist,
+    BucketAnalyticsScreen.-vertical-panels #panel-types {
+        height: 15;
+    }
+
+    BucketAnalyticsScreen.-vertical-files #files-row {
+        layout: vertical;
+        height: auto;
+    }
+    BucketAnalyticsScreen.-vertical-files #panel-newest,
+    BucketAnalyticsScreen.-vertical-files #panel-oldest {
+        width: 100%;
+        height: 10;
+        border-left: none;
+        border-top: dashed $panel-darken-1;
+    }
     """
 
     def __init__(
@@ -232,6 +265,16 @@ class BucketAnalyticsScreen(Screen):
     def on_mount(self) -> None:
         self._set_status("[yellow]⟳ Scanning…[/yellow]")
         self.run_worker(self._fetch(), exclusive=True, name="analytics")
+        self._update_responsive_classes()
+
+    def on_resize(self) -> None:
+        self._update_responsive_classes()
+
+    def _update_responsive_classes(self) -> None:
+        width, height = self.size
+        self.set_class(height < 30, "-hide-cards")
+        self.set_class(width < 100, "-vertical-panels")
+        self.set_class(width < 100, "-vertical-files")
 
     def action_go_back(self) -> None:
         self.app.pop_screen()

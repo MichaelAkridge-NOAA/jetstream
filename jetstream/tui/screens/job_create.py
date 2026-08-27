@@ -70,6 +70,19 @@ class JobCreateScreen(Screen):
         border-right: tall $panel-darken-2;
     }
 
+    /* Responsive adjustments */
+    JobCreateScreen.-two-col #main-cols {
+        layout: vertical;
+    }
+    JobCreateScreen.-two-col #col-left,
+    JobCreateScreen.-two-col #col-mid,
+    JobCreateScreen.-two-col #col-right {
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: tall $panel-darken-2;
+    }
+
     /* ── Column section headers ────────────────────────────── */
     .col-head {
         height: 1;
@@ -198,6 +211,16 @@ class JobCreateScreen(Screen):
         super().__init__()
         self.controller = controller
         self._analyzing = False
+
+    def on_mount(self) -> None:
+        self._update_responsive_classes()
+
+    def on_resize(self) -> None:
+        self._update_responsive_classes()
+
+    def _update_responsive_classes(self) -> None:
+        width, height = self.size
+        self.set_class(width < 120, "-two-col")
 
     def compose(self) -> ComposeResult:
         yield Header()

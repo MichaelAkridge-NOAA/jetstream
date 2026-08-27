@@ -34,9 +34,12 @@ class DateTimePickerScreen(ModalScreen[str | None]):
     #picker-dialog {
         width: 46;
         height: 36;
+        max-width: 100%;
+        max-height: 100%;
         background: $surface;
         border: thick $accent;
         padding: 1 1;
+        overflow-y: auto;
     }
 
     /* Kill the top/bottom bevel borders that render as separator lines */
