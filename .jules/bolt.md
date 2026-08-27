@@ -1,0 +1,3 @@
+## 2025-05-15 - [Optimize File Filtering for Large Directory Scans]
+**Learning:** During directory analysis, the `FileFilter.should_include_file` method is called millions of times. Iterating over a list of regex patterns and performing O(n) lookups for folder exclusions creates a significant bottleneck. Additionally, repeated calls to `os.path.basename` and `os.path.join` inside tight loops (like `os.scandir` or `os.walk` iterations) contribute measurable overhead.
+**Action:** Consolidate multiple include/exclude patterns into single compiled regex objects. Convert exclusion lists to sets for O(1) lookups. Provide a `should_include_filename` method to allow callers to pass already-available filenames, avoiding redundant string manipulations.
