@@ -36,6 +36,14 @@ class Settings(BaseSettings):
     GCS_AUDIT_SCAN_MAX_OBJECTS: int = 250000
     GCS_AUDIT_FINDINGS_PAGE_SIZE: int = 200
 
+    # Dataset creator defaults
+    DATASET_CREATOR_MAX_SCAN_RESULTS: int = 50000
+    # Bucket allowlist for scan/proxy. "*" allows any bucket the credentials can
+    # reach; set a comma-separated list to restrict (recommended if exposed off localhost).
+    DATASET_CREATOR_ALLOWED_BUCKETS: str = "*"
+    DATASET_CREATOR_VIEWER_TTL_SECONDS: int = 3600
+    DATASET_CREATOR_PREVIEW_LIMIT: int = 200
+
     # Local audit defaults
     LOCAL_AUDIT_MAX_DETAILED_FILES: int = 20000
     LOCAL_AUDIT_SCAN_MAX_SECONDS: int = 120

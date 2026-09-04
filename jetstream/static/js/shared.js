@@ -91,6 +91,7 @@ function renderSharedNav() {
         { icon: '☁️', label: 'Cloud Sync', href: '/static/cloud.html' },
         { icon: '🧹', label: 'Cloud Audit', href: '/static/cloud-audit.html', visible: prefs.beta_pages.cloud_audit },
         { icon: '🗄️', label: 'Local Audit', href: '/static/local-audit.html', visible: prefs.beta_pages.local_audit },
+        { icon: '📚', label: 'Cloud Catalog Tool', href: '/static/dataset-creator.html' },
         { icon: '📋', label: 'Jobs', href: '/static/jobs.html' },
         { icon: '📊', label: 'Analytics', href: '/static/analytics.html' },
         { icon: '⚙️', label: 'Settings', href: '/static/settings.html' }

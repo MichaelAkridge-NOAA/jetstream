@@ -375,6 +375,39 @@ class LocalAuditFinding(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
+class DatasetCatalog(Base):
+    """Model for saved Dataset Creator catalogs."""
+    __tablename__ = "dataset_catalogs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    catalog_id = Column(String, unique=True, index=True)
+    name = Column(String, nullable=False)
+    gcs_prefix = Column(String, default="")
+    catalog_format = Column(String, default="both")
+    payload = Column(JSON, nullable=False)
+    total_items = Column(Integer, default=0)
+    total_groups = Column(Integer, default=0)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self, include_payload: bool = False):
+        """Convert to dictionary."""
+        created = self.created_at
+        if created and created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+
+        data = {
+            "id": self.catalog_id,
+            "name": self.name,
+            "created_at": created.isoformat() if created else None,
+            "gcs_prefix": self.gcs_prefix or "",
+            "total_items": int(self.total_items or 0),
+            "total_groups": int(self.total_groups or 0),
+        }
+        if include_payload:
+            data["catalog"] = self.payload
+        return data
+
+
 def _run_migrations():
     """Run database migrations for schema changes."""
     if SessionLocal is None or engine is None:
@@ -414,6 +447,11 @@ def _run_migrations():
             print("⚙ Running migration: Creating 'local_audit_findings' table...")
             LocalAuditFinding.__table__.create(bind=engine, checkfirst=True)
             print("✓ Migration completed: local_audit_findings table created")
+
+        if 'dataset_catalogs' not in tables:
+            print("⚙ Running migration: Creating 'dataset_catalogs' table...")
+            DatasetCatalog.__table__.create(bind=engine, checkfirst=True)
+            print("✓ Migration completed: dataset_catalogs table created")
 
         columns = [col['name'] for col in inspector.get_columns('upload_jobs')]
         

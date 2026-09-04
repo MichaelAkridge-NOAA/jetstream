@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Dataset Catalog - NOAA JetStream</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="header">
+        <div class="header-inner">
+            <img src="/static/jetstream_logo.png" alt="JetStream Logo" class="header-logo">
+            <div class="header-content">
+                <h1>NOAA JetStream</h1>
+                <p>Cloud Data Management System</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="nav-tabs">
+        <button class="nav-tab" onclick="window.location.href='/'">Home</button>
+        <button class="nav-tab" onclick="window.location.href='/static/uploads.html'">Uploads</button>
+        <button class="nav-tab" onclick="window.location.href='/static/cloud.html'">Cloud Sync</button>
+        <button class="nav-tab" onclick="window.location.href='/static/cloud-audit.html'">Cloud Audit</button>
+        <button class="nav-tab" onclick="window.location.href='/static/local-audit.html'">Local Audit</button>
+        <button class="nav-tab active" onclick="window.location.href='/static/dataset-creator.html'">Cloud Catalog Tool</button>
+        <button class="nav-tab" onclick="window.location.href='/static/jobs.html'">Jobs</button>
+        <button class="nav-tab" onclick="window.location.href='/static/analytics.html'">Analytics</button>
+        <button class="nav-tab" onclick="window.location.href='/static/settings.html'">Settings</button>
+    </div>
+
+    <div class="container">
+        <h1 style="margin: 30px 0 20px 0;">Cloud Catalog Tool</h1>
+
+        <div class="dc-layout">
+            <!-- Left column: wizard form -->
+            <div>
+                <div class="panel">
+                    <div class="panel-head">
+                        <h2>Cloud Dataset Catalog Creator Wizard</h2>
+                    </div>
+                    <p class="muted-note" style="margin-bottom: 16px;">
+                        Build a dataset catalog from a GCS prefix, preview grouping/site-instance
+                        logic, open it in the viewer, and export JSON in flat, grouped, or both formats.
+                    </p>
+
+                    <form id="datasetForm" class="upload-form" onsubmit="return false;">
+                        <div class="form-group">
+                            <label for="gcs_prefix">Bucket/Prefix</label>
+                            <input type="text" id="gcs_prefix" name="gcs_prefix" placeholder="gs://bucket/path/" required>
+                        </div>
+
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="include_images" checked>
+                            <label for="include_images">Images</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="include_videos" checked>
+                            <label for="include_videos">Video</label>
+                        </div>
+
+                        <button type="button" class="btn btn-secondary btn-sm" id="toggleOptional" style="margin-top: 12px;">
+                            Optional settings &#9662;
+                        </button>
+
+                        <div id="optionalOptions" class="dc-optional" style="display: none;">
+                            <div class="muted-note" style="margin-bottom: 12px;">Filters, grouping, and site-instance behavior.</div>
+
+                            <div class="form-group">
+                                <label for="extensions">Extensions (optional, comma list)</label>
+                                <input type="text" id="extensions" placeholder=".jpg,.png,.mp4">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="filename_filter">Filename filter</label>
+                                <input type="text" id="filename_filter" placeholder="Example: BAK-02_2018 or *_A_*.jpg">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="folder_filter">Folder/path filter</label>
+                                <input type="text" id="folder_filter" placeholder="Example: PRIA_v2/images">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="ignore_folder_names">Ignore folder names</label>
+                                <input type="text" id="ignore_folder_names" placeholder="Example: MISC, Products">
+                                <div class="form-hint">Case-insensitive folder names to exclude anywhere below the selected prefix.</div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="max_path_depth">Max path depth</label>
+                                <input type="number" id="max_path_depth" min="0" max="50" placeholder="Example: 3">
+                                <div class="form-hint">Maximum folder count below the selected prefix before the filename.</div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="max_results">Max results</label>
+                                <input type="number" id="max_results" min="0" value="0">
+                                <div class="form-hint">Use 0 for the server scan limit (scan + build include everything up to that cap).</div>
+                            </div>
+
+                            <hr class="dc-divider">
+
+                            <div class="form-group">
+                                <label for="catalog_format">Output format</label>
+                                <select id="catalog_format">
+                                    <option value="flat">Flat list</option>
+                                    <option value="grouped">Grouped sites</option>
+                                    <option value="both" selected>Both</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="group_by_mode">Group by</label>
+                                <select id="group_by_mode">
+                                    <option value="filename_token" selected>token count</option>
+                                    <option value="folder_segment">Folder segment</option>
+                                    <option value="regex">Regex capture</option>
+                                    <option value="manual">Manual mapping</option>
+                                    <option value="none">No grouping</option>
+                                </select>
+                            </div>
+
+                            <div id="grouping_filename_block">
+                                <div class="form-group">
+                                    <label for="filename_delimiter">Filename delimiter</label>
+                                    <input type="text" id="filename_delimiter" value="_" maxlength="4">
+                                </div>
+                                <div class="form-group">
+                                    <label for="filename_token_count">Filename character position Token count</label>
+                                    <input type="number" id="filename_token_count" min="1" max="10" value="3">
+                                </div>
+                            </div>
+
+                            <div id="grouping_folder_block" style="display: none;">
+                                <div class="form-group">
+                                    <label for="folder_segment_index">Folder segment index</label>
+                                    <input type="number" id="folder_segment_index" min="0" max="50" value="0">
+                                </div>
+                            </div>
+
+                            <div id="grouping_regex_block" style="display: none;">
+                                <div class="form-group">
+                                    <label for="regex_pattern">Regex pattern</label>
+                                    <input type="text" id="regex_pattern" maxlength="200" placeholder="Example: ^([A-Z]+-\d+_\d{4})">
+                                </div>
+                                <div class="form-group">
+                                    <label for="regex_group_index">Capture group index</label>
+                                    <input type="number" id="regex_group_index" min="0" max="20" value="1">
+                                </div>
+                            </div>
+
+                            <div id="grouping_manual_block" style="display: none;">
+                                <div class="form-group">
+                                    <label for="manual_overrides">Manual mapping JSON</label>
+                                    <textarea id="manual_overrides" rows="4" placeholder='{"site1": ["*BAK-02_2018*"], "site2": ["*PRIA*"]}'></textarea>
+                                </div>
+                            </div>
+
+                            <hr class="dc-divider">
+
+                            <div class="form-group">
+                                <label for="site_instance_mode">Site instance mode</label>
+                                <select id="site_instance_mode">
+                                    <option value="none" selected>None</option>
+                                    <option value="manual">Manual group select</option>
+                                    <option value="threshold">Count threshold</option>
+                                    <option value="folder_boundary">Folder boundary</option>
+                                    <option value="filename_pattern">Filename pattern</option>
+                                </select>
+                            </div>
+
+                            <div id="site_threshold_block" style="display: none;">
+                                <div class="form-group">
+                                    <label for="site_instance_threshold">Minimum files per group</label>
+                                    <input type="number" id="site_instance_threshold" min="1" max="1000000" value="25">
+                                </div>
+                            </div>
+
+                            <div id="site_folder_block" style="display: none;">
+                                <div class="form-group">
+                                    <label for="site_instance_folder_segment_index">Folder segment index</label>
+                                    <input type="number" id="site_instance_folder_segment_index" min="0" max="50" value="0">
+                                </div>
+                            </div>
+
+                            <div id="site_pattern_block" style="display: none;">
+                                <div class="form-group">
+                                    <label for="site_instance_pattern">Filename pattern (regex)</label>
+                                    <input type="text" id="site_instance_pattern" maxlength="200" placeholder="Example: (2018|2019)">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="dc-actions">
+                            <button type="button" class="btn btn-secondary" id="btnScan">Scan Preview</button>
+                            <button type="button" class="btn btn-primary" id="btnBuild">Build Catalog</button>
+                            <button type="button" class="btn btn-secondary" id="btnSave">Save Catalog</button>
+                            <button type="button" class="btn btn-secondary" id="btnViewer">Open In Data Viewer</button>
+                            <button type="button" class="btn btn-secondary" id="btnExport">Export JSON</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Right column: results -->
+            <div>
+                <div class="panel">
+                    <div class="panel-head">
+                        <h2>Preview</h2>
+                        <span id="scanSummary" class="muted-note">No scan yet</span>
+                    </div>
+                    <div id="scanBusy" class="dc-busy" hidden>
+                        <div class="dc-busy-row">
+                            <span class="spinner spinner-sm"></span>
+                            <span class="dc-busy-label">Scanning bucket…</span>
+                            <span class="dc-busy-elapsed" id="scanBusyElapsed">0s</span>
+                        </div>
+                        <div class="dc-progress"><div class="dc-progress-bar"></div></div>
+                        <div class="dc-busy-hint">Listing objects under the prefix. Large prefixes can take a while.</div>
+                    </div>
+                    <div id="previewAlert" class="dc-alert info">Scan a prefix to preview matching media files.</div>
+                    <div class="table-scroll">
+                        <table class="cloud-results-table">
+                            <thead><tr><th style="width: 60px;">#</th><th>URI</th></tr></thead>
+                            <tbody id="previewBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-head">
+                        <h2>Live Grouping Preview</h2>
+                        <span id="livePreviewSummary" class="muted-note">Scan first to enable live preview</span>
+                    </div>
+
+                    <div class="dc-preview-grouping">
+                        <div class="dc-mini-field">
+                            <label for="pv_group_by_mode">Group by</label>
+                            <select id="pv_group_by_mode">
+                                <option value="filename_token">Filename token</option>
+                                <option value="folder_segment">Folder segment</option>
+                                <option value="regex">Regex capture</option>
+                                <option value="manual">Manual mapping</option>
+                                <option value="none">No grouping</option>
+                            </select>
+                        </div>
+                        <div class="dc-mini-field" data-pvmode="filename_token">
+                            <label for="pv_filename_delimiter">Delimiter</label>
+                            <input type="text" id="pv_filename_delimiter" maxlength="4" style="width: 56px;">
+                        </div>
+                        <div class="dc-mini-field" data-pvmode="filename_token">
+                            <label for="pv_filename_token_count">Tokens</label>
+                            <input type="number" id="pv_filename_token_count" min="1" max="10" style="width: 68px;">
+                        </div>
+                        <div class="dc-mini-field" data-pvmode="folder_segment">
+                            <label for="pv_folder_segment_index">Segment index</label>
+                            <input type="number" id="pv_folder_segment_index" min="0" max="50" style="width: 68px;">
+                        </div>
+                        <div class="dc-mini-field" data-pvmode="regex">
+                            <label for="pv_regex_pattern">Pattern</label>
+                            <input type="text" id="pv_regex_pattern" maxlength="200" style="width: 170px;">
+                        </div>
+                        <div class="dc-mini-field" data-pvmode="regex">
+                            <label for="pv_regex_group_index">Capture</label>
+                            <input type="number" id="pv_regex_group_index" min="0" max="20" style="width: 68px;">
+                        </div>
+                        <div class="dc-mini-field" data-pvmode="manual">
+                            <span class="muted-note">Edit the mapping JSON in the sidebar.</span>
+                        </div>
+                    </div>
+
+                    <div id="groupingExplainer" class="dc-explainer"></div>
+
+                    <div class="dc-preview-controls">
+                        <div class="dc-toggle" id="shapeToggle">
+                            <button type="button" data-shape="grouped" class="active">Grouped</button>
+                            <button type="button" data-shape="flat">Flat</button>
+                        </div>
+                        <div class="dc-preview-controls-right">
+                            <label for="liveSampleSize" class="muted-note">Sample/group</label>
+                            <input type="number" id="liveSampleSize" min="1" max="50" value="3" style="width: 80px;">
+                            <button type="button" class="btn btn-secondary btn-sm" id="btnCopyPreview">Copy</button>
+                        </div>
+                    </div>
+
+                    <div id="liveChips" class="chip-row"></div>
+                    <div class="muted-note" style="margin-bottom: 6px;">
+                        Each chip is one group (green = site instance). The JSON below is a
+                        <strong>sample</strong> of the export shape, not the full catalog.
+                    </div>
+                    <pre id="livePreviewJson" class="json-preview">Scan a prefix, then adjust grouping options to see a live sample here.</pre>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-head">
+                        <h2>Catalog Output</h2>
+                        <span id="catalogSummary" class="muted-note">No catalog built</span>
+                    </div>
+
+                    <div id="buildBusy" class="dc-busy" hidden>
+                        <div class="dc-busy-row">
+                            <span class="spinner spinner-sm"></span>
+                            <span class="dc-busy-label">Building catalog…</span>
+                            <span class="dc-busy-elapsed" id="buildBusyElapsed">0s</span>
+                        </div>
+                        <div class="dc-progress"><div class="dc-progress-bar"></div></div>
+                        <div class="dc-busy-hint">Re-scanning the prefix and grouping files on the server.</div>
+                    </div>
+
+                    <div class="dc-stat-row">
+                        <div class="dc-stat-box">
+                            <div class="muted-note">Flat instances</div>
+                            <div id="flatCount" class="dc-stat-value">0</div>
+                        </div>
+                        <div class="dc-stat-box">
+                            <div class="muted-note">Groups / site instances</div>
+                            <div id="groupCount" class="dc-stat-value">0 / 0</div>
+                        </div>
+                    </div>
+
+                    <div class="table-scroll">
+                        <table class="cloud-results-table">
+                            <thead><tr><th style="width: 90px;">Manual Site</th><th>Group</th><th style="width: 80px;">Count</th><th style="width: 110px;">Site Instance</th></tr></thead>
+                            <tbody id="groupBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="muted-note" style="margin-top: 10px;" id="manualSiteHint">
+                        Choose Manual site mode to enable per-group selection.
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-head">
+                        <h2>Saved Catalogs</h2>
+                        <button class="btn btn-secondary btn-sm" id="btnRefreshSaved">Refresh</button>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="cloud-results-table">
+                            <thead><tr><th>Name</th><th style="width: 70px;">Items</th><th style="width: 80px;">Groups</th><th style="width: 170px;">Created</th><th style="width: 300px;">Actions</th></tr></thead>
+                            <tbody id="savedCatalogBody">
+                                <tr><td colspan="5" class="muted-note">No saved catalogs yet.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/shared.js"></script>
+    <script src="/static/js/dataset-creator.js"></script>
+</body>
+</html>

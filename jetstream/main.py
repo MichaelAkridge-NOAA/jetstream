@@ -68,6 +68,16 @@ except Exception as e:
     cloud_audit = None
     CLOUD_AUDIT_AVAILABLE = False
 
+# Import dataset_creator separately (depends on google-cloud-storage)
+try:
+    from .routers import dataset_creator
+    DATASET_CREATOR_AVAILABLE = True
+except Exception as e:
+    logger = logging.getLogger(__name__)
+    logger.warning(f"Dataset creator disabled due to import error: {e}")
+    dataset_creator = None
+    DATASET_CREATOR_AVAILABLE = False
+
 # Configure logging to be very verbose
 logging.basicConfig(
     level=logging.INFO,
@@ -219,6 +229,12 @@ if CLOUD_AUDIT_AVAILABLE:
 else:
     logger.warning("[WARN] Cloud audit router disabled")
 
+if DATASET_CREATOR_AVAILABLE:
+    app.include_router(dataset_creator.router, prefix="/api/dataset-creator", tags=["Dataset Creator"])
+    logger.info("[OK] Dataset creator router enabled")
+else:
+    logger.warning("[WARN] Dataset creator router disabled")
+
 app.include_router(settings_router.router, prefix="/api/settings", tags=["Settings"])
 
 # Include native Google Drive API router
@@ -324,6 +340,19 @@ async def cloud_audit_page():
 async def local_audit_page():
     """Serve the local audit page."""
     return serve_static_page("local-audit.html")
+
+
+@app.get("/dataset-creator")
+async def dataset_creator_page():
+    """Serve the dataset creator page."""
+    return serve_static_page("dataset-creator.html")
+
+
+@app.get("/dataset-catalog-viewer")
+async def dataset_catalog_viewer_page():
+    """Serve the dataset catalog viewer page."""
+    return serve_static_page("dataset-catalog-viewer.html")
+
 
 @app.get("/api/version")
 async def get_version():

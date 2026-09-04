@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catalog Viewer - NOAA JetStream</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="header">
+        <div class="header-inner">
+            <img src="/static/jetstream_logo.png" alt="JetStream Logo" class="header-logo">
+            <div class="header-content">
+                <h1>NOAA JetStream</h1>
+                <p>Cloud Data Management System</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1 style="margin: 30px 0 20px 0;">Catalog Viewer</h1>
+
+        <div class="panel">
+            <div style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+                <div class="form-group" style="flex: 1; min-width: 240px; margin-bottom: 0;">
+                    <label for="dcv-group">Group</label>
+                    <select id="dcv-group"></select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="dcv-page-size">Images per page</label>
+                    <select id="dcv-page-size">
+                        <option value="50" selected>50</option>
+                        <option value="100">100</option>
+                        <option value="200">200</option>
+                    </select>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="dcv-prev">Previous</button>
+                <button class="btn btn-secondary btn-sm" id="dcv-next">Next</button>
+            </div>
+            <div id="dcv-status" class="muted-note" style="margin-top: 10px;"></div>
+        </div>
+
+        <div class="panel">
+            <div id="dcv-grid" class="thumbnail-grid"></div>
+        </div>
+    </div>
+
+    <div class="modal" id="dcv-modal">
+        <div class="modal-content" style="max-width: 90vw;">
+            <div class="modal-header">
+                <h2 id="dcv-modal-title" style="font-size: 1em; word-break: break-all;"></h2>
+                <span class="modal-close" id="dcv-modal-close">&times;</span>
+            </div>
+            <img id="dcv-modal-image" alt="Preview" style="max-width: 100%; max-height: 75vh; display: block; margin: 0 auto;">
+        </div>
+    </div>
+
+    <script src="/static/js/shared.js"></script>
+    <script src="/static/js/dataset-catalog-viewer.js"></script>
+</body>
+</html>
