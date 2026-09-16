@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="430" viewBox="0 0 900 430" role="img" aria-labelledby="title desc">
+  <title id="title">Anaconda Prompt startup example</title>
+  <desc id="desc">An Anaconda Prompt window showing the JetStream command and the local dashboard URL.</desc>
+  <rect width="900" height="430" fill="#f4f6f8"/>
+  <text x="38" y="42" font-family="Segoe UI,Arial,sans-serif" font-size="24" font-weight="700" fill="#17212b">2. Start JetStream from Anaconda Prompt</text>
+  <rect x="38" y="68" width="824" height="300" rx="6" fill="#0d1117"/>
+  <rect x="38" y="68" width="824" height="34" rx="6" fill="#2d333b"/>
+  <circle cx="58" cy="85" r="6" fill="#ff5f57"/><circle cx="78" cy="85" r="6" fill="#febc2e"/><circle cx="98" cy="85" r="6" fill="#28c840"/>
+  <text x="130" y="91" font-family="Segoe UI,Arial,sans-serif" font-size="15" fill="#d0d7de">Anaconda Prompt</text>
+  <text x="64" y="155" font-family="Consolas,monospace" font-size="21" fill="#79c0ff">(base) C:\Users\Alex&gt;</text>
+  <text x="380" y="155" font-family="Consolas,monospace" font-size="21" fill="#f0f6fc">jetstream</text>
+  <text x="64" y="205" font-family="Consolas,monospace" font-size="20" fill="#8b949e">NOAA JetStream - Cloud Data Manager</text>
+  <text x="64" y="242" font-family="Consolas,monospace" font-size="20" fill="#8b949e">Server ready at http://localhost:8000</text>
+  <text x="64" y="279" font-family="Consolas,monospace" font-size="20" fill="#8b949e">Press Ctrl+C to stop the server</text>
+  <rect x="600" y="120" width="240" height="36" rx="5" fill="#dbeafe" stroke="#2f81f7"/>
+  <text x="615" y="143" font-family="Segoe UI,Arial,sans-serif" font-size="14" fill="#174ea6">Paste command, press Enter</text>
+  <rect x="64" y="310" width="485" height="30" rx="4" fill="#162033"/>
+  <text x="78" y="331" font-family="Consolas,monospace" font-size="18" fill="#79c0ff">Open: http://localhost:8000</text>
+</svg>

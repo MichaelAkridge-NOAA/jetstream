@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="430" viewBox="0 0 900 430" role="img" aria-labelledby="title desc">
+  <title id="title">Anaconda Navigator and Anaconda Prompt on Windows</title>
+  <desc id="desc">A Windows Start menu example showing Anaconda Navigator and Anaconda Prompt as the two tools used to set up JetStream.</desc>
+  <rect width="900" height="430" fill="#f4f6f8"/>
+  <text x="38" y="42" font-family="Segoe UI,Arial,sans-serif" font-size="24" font-weight="700" fill="#17212b">Install Anaconda, then choose your starting point</text>
+  <rect x="38" y="68" width="824" height="300" rx="8" fill="#ffffff" stroke="#c8d1dc" stroke-width="2"/>
+  <rect x="38" y="68" width="824" height="42" rx="8" fill="#2f6f4e"/>
+  <text x="62" y="96" font-family="Segoe UI,Arial,sans-serif" font-size="17" fill="#ffffff">Anaconda Distribution</text>
+  <rect x="70" y="136" width="360" height="78" rx="6" fill="#e6f4ea" stroke="#2f6f4e" stroke-width="2"/>
+  <text x="94" y="169" font-family="Segoe UI,Arial,sans-serif" font-size="22" font-weight="700" fill="#20533a">Anaconda Navigator</text>
+  <text x="94" y="195" font-family="Segoe UI,Arial,sans-serif" font-size="16" fill="#345b47">Manage environments and apps</text>
+  <rect x="470" y="136" width="322" height="78" rx="6" fill="#eef3ff" stroke="#2f81f7" stroke-width="2"/>
+  <text x="494" y="169" font-family="Segoe UI,Arial,sans-serif" font-size="22" font-weight="700" fill="#174ea6">Anaconda Prompt</text>
+  <text x="494" y="195" font-family="Segoe UI,Arial,sans-serif" font-size="16" fill="#315a91">Paste the setup commands here</text>
+  <path d="M250 214 L250 255 L630 255 L630 214" fill="none" stroke="#2f81f7" stroke-width="3"/>
+  <circle cx="250" cy="255" r="5" fill="#2f81f7"/><circle cx="630" cy="255" r="5" fill="#2f81f7"/>
+  <rect x="184" y="280" width="532" height="48" rx="5" fill="#dbeafe" stroke="#2f81f7"/>
+  <text x="217" y="310" font-family="Segoe UI,Arial,sans-serif" font-size="17" fill="#174ea6">This guide uses Anaconda Prompt for commands.</text>
+</svg>
