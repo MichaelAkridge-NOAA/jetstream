@@ -103,7 +103,6 @@ def create_shortcuts():
         return True
         
     except ImportError as e:
-        import sys
         # Check if pyshortcuts is installed but missing a sub-dependency (e.g. pywin32)
         try:
             import importlib.util
