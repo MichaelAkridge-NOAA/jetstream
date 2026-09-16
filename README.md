@@ -29,19 +29,17 @@ For the basic web dashboard:
    - Note: On Windows, [Anaconda Distribution](https://www.anaconda.com/download) is recommended, which includes Anaconda Navigator, Conda, and Anaconda Prompt
 - [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) — for cloud upload features
 - **Permissions** to target cloud buckets
+---
 
-### Google Cloud Setup
+### Step 0: Google Cloud Setup
 
-Required for Google Cloud upload features.Install Google Cloud SDK
-- Download from: https://cloud.google.com/sdk/docs/install
+Install [Google Cloud SDK](https://cloud.google.com/sdk/docs/install)
 ```bash
 # Authenticate command
 gcloud auth login
 ```
-> **⚠️ Important:** If you encounter a `Reauthentication required.` error, Google requires rotating or re-authenticating credentials at unspecified times(~ every 16 hrs).
->
-> To fix this, simply login again
-## Install Anaconda on Windows
+
+## Step 1: Install Anaconda on Windows
 
 The easiest Windows setup for new users is [Anaconda Distribution](https://www.anaconda.com/download). It includes:
 
@@ -52,7 +50,7 @@ During installation, the default options are usually appropriate. After installa
 
 ![Anaconda Navigator in the Windows Start menu](./docs/anaconda_navigator_windows.svg)
 
-## Quick start on Windows
+## Step 2: Quick Install Start on Windows
 
 ### 1. Open Anaconda Prompt
 
@@ -91,7 +89,7 @@ Before using GCS upload, bucket browsing, or cloud analysis features, install th
 ```powershell
 gcloud auth login
 ```
-
+> Note: 
 Your Google account must have permission to access the target bucket. If Google reports `Reauthentication required`, run the login command again.
 
 ## What to do next
