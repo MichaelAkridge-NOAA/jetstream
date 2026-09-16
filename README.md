@@ -102,11 +102,13 @@ Once the dashboard is open:
 4. Use **Cloud** or **Cloud Audit** after Google Cloud authentication is complete.
 
 ## Create Desktop Shortcuts
-To create optional Windows desktop and Start Menu shortcuts:
+To create optional Windows desktop and Start Menu shortcuts for JetStream and Google Cloud authentication:
 
 ```powershell
 jetstream-create-shortcuts
 ```
+
+This creates a JetStream launcher plus a **GCloud Auth Login** shortcut that opens `gcloud auth login` in a terminal.
 
 ## Updating JetStream
 

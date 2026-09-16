@@ -290,17 +290,17 @@ uv pip install -e ".[dev]"
 
 ---
 
-Desktop and Start Menu shortcuts are included with the default install. The shortcut will automatically use the JetStream icon (`icon.ico`) when created.
+Desktop and Start Menu shortcuts are included with the default install. The JetStream shortcut will automatically use the JetStream icon (`icon.ico`) when created, and the Google Cloud authentication shortcut uses the bundled `gcloud_auth` icon.
 
 ```bash
-# Create desktop + Start Menu shortcut (uses JetStream icon automatically)
+# Create desktop + Start Menu shortcuts for JetStream and Google Cloud auth
 jetstream-create-shortcuts
 
 # Remove shortcuts
 jetstream-remove-shortcuts
 ```
 
-Shortcuts launch JetStream directly using the current Python environment and open a terminal window. On Windows a `.lnk` shortcut is created on the desktop and in the Start Menu. On macOS/Linux a `.app`/`.desktop` shortcut is created in Applications.
+Shortcuts launch JetStream directly using the current Python environment and open a terminal window. The companion **GCloud Auth Login** shortcut opens `gcloud auth login` in a terminal for users who need to refresh Google Cloud authentication. On Windows `.lnk` shortcuts are created on the desktop and in the Start Menu. On macOS/Linux `.app`/`.desktop` shortcuts are created in Applications.
 
 ### Troubleshooting Startup Issues
 

@@ -2,8 +2,68 @@
 Desktop and Start Menu shortcut creation for NOAA JetStream
 """
 import sys
-import os
 from pathlib import Path
+
+
+SHORTCUTS = [
+    {
+        "name": "NOAA_JetStream",
+        "launcher": "launch_jetstream",
+        "description": "Launch NOAA JetStream - Cloud Data Manager",
+        "icon": "icon",
+    },
+    {
+        "name": "GCloud_Auth_Login",
+        "launcher": "gcloud_auth_login",
+        "description": "Authenticate Google Cloud for JetStream",
+        "icon": "gcloud_auth",
+    },
+]
+
+
+def _find_icon(base_name):
+    """Find the best packaged icon for a shortcut."""
+    package_dir = Path(__file__).parent
+    possible_icons = [
+        package_dir / "static" / f"{base_name}.ico",
+        package_dir / "static" / f"{base_name}.png",
+        package_dir.parent / "docs" / f"{base_name}.ico",
+        package_dir.parent / "docs" / f"{base_name}.png",
+    ]
+    for icon in possible_icons:
+        if icon.exists():
+            return str(icon)
+    return None
+
+
+def _write_launcher(launcher_name, commands):
+    launcher_dir = Path.home() / ".jetstream"
+    launcher_dir.mkdir(parents=True, exist_ok=True)
+
+    if sys.platform == "win32":
+        launcher_file = launcher_dir / f"{launcher_name}.bat"
+        with open(launcher_file, "w") as f:
+            f.write("@echo off\n")
+            for command in commands:
+                f.write(f"{command}\n")
+            f.write("pause\n")
+    else:
+        launcher_file = launcher_dir / f"{launcher_name}.sh"
+        with open(launcher_file, "w") as f:
+            f.write("#!/bin/bash\n")
+            for command in commands:
+                f.write(f"{command}\n")
+        launcher_file.chmod(0o755)
+
+    return launcher_file
+
+
+def _shortcut_name_variants(shortcut_name):
+    return {
+        shortcut_name,
+        shortcut_name.replace("_", "-"),
+        shortcut_name.replace("_", "__"),
+    }
 
 
 def create_shortcuts():
@@ -15,72 +75,41 @@ def create_shortcuts():
         # Get the Python executable and script paths
         python_exe = sys.executable
         
-        # Create shortcut to launch JetStream
-        shortcut_name = "NOAA_JetStream"
-        
-        # Determine icon path (if you have one)
-        icon_path = None
-        package_dir = Path(__file__).parent
-        possible_icons = [
-            package_dir / "static" / "icon.ico",
-            package_dir / "static" / "icon.png",
-            package_dir.parent / "docs" / "icon.ico",
-            package_dir.parent / "docs" / "icon.png",
-        ]
-        for icon in possible_icons:
-            if icon.exists():
-                icon_path = str(icon)
-                break
-        
         print("🔧 Creating shortcuts...")
         print(f"   Python: {python_exe}")
-        
-        # For Windows, create a simple batch file to avoid conda wrapper issues
-        if sys.platform == "win32":
-            # Create a batch file launcher
-            batch_file = Path.home() / ".jetstream" / "launch_jetstream.bat"
-            batch_file.parent.mkdir(parents=True, exist_ok=True)
-            
-            # Write a simple batch file that directly calls python
-            with open(batch_file, 'w') as f:
-                f.write('@echo off\n')
-                f.write(f'"{python_exe}" -m jetstream.cli\n')
-                f.write('pause\n')
-            
-            # Create shortcut to the batch file (no args needed, batch file has command)
-            script_target = str(batch_file)
-            print(f"   Created launcher: {batch_file}")
-        else:
-            # For macOS/Linux, create a shell script wrapper
-            script_file = Path.home() / ".jetstream" / "launch_jetstream.sh"
-            script_file.parent.mkdir(parents=True, exist_ok=True)
-            
-            with open(script_file, 'w') as f:
-                f.write('#!/bin/bash\n')
-                f.write(f'"{python_exe}" -m jetstream.cli\n')
-            
-            # Make it executable
-            script_file.chmod(0o755)
-            script_target = str(script_file)
-            print(f"   Created launcher: {script_file}")
-        
-        print(f"   Command: {script_target}")
-        if icon_path:
-            print(f"   Icon: {icon_path}")
-        
-        # Create shortcut on desktop
-        desktop = pyshortcuts.make_shortcut(
-            script_target,
-            name=shortcut_name,
-            description="Launch NOAA JetStream - Cloud Data Manager",
-            icon=icon_path,
-            terminal=True,
-            desktop=True,
-            startmenu=True,
-        )
+
+        shortcut_commands = {
+            "launch_jetstream": [f'"{python_exe}" -m jetstream.cli'],
+            "gcloud_auth_login": ["gcloud auth login"],
+        }
+
+        desktops = []
+        for shortcut in SHORTCUTS:
+            script_target = _write_launcher(
+                shortcut["launcher"],
+                shortcut_commands[shortcut["launcher"]],
+            )
+            icon_path = _find_icon(shortcut["icon"])
+
+            print(f"   Created launcher: {script_target}")
+            print(f"   Command: {script_target}")
+            if icon_path:
+                print(f"   Icon: {icon_path}")
+
+            desktop = pyshortcuts.make_shortcut(
+                str(script_target),
+                name=shortcut["name"],
+                description=shortcut["description"],
+                icon=icon_path,
+                terminal=True,
+                desktop=True,
+                startmenu=True,
+            )
+            desktops.append(desktop)
         
         print("\n✅ Shortcuts created successfully!")
-        print(f"   Desktop: {desktop}")
+        for desktop in desktops:
+            print(f"   Desktop: {desktop}")
         
         # Get start menu location (different methods for different versions)
         try:
@@ -99,6 +128,8 @@ def create_shortcuts():
         print("   - Your desktop icon")
         print("   - Start Menu (Windows) or Applications (Mac/Linux)")
         print("   - Command line: jetstream")
+        print("\n🔐 You can also authenticate Google Cloud from:")
+        print("   - The GCloud Auth Login desktop or Start Menu shortcut")
         
         return True
         
@@ -136,18 +167,16 @@ def remove_shortcuts():
     try:
         import pyshortcuts
         
-        shortcut_name = "NOAA_JetStream"
-        # pyshortcuts sanitizes the name differently in different contexts
-        sanitized_names = [
-            "NOAA_JetStream",
-            "NOAA-JetStream",
-            "NOAA__JetStream",
-        ]
+        shortcut_names = [shortcut["name"] for shortcut in SHORTCUTS]
+        sanitized_names = set()
+        for shortcut_name in shortcut_names:
+            sanitized_names.update(_shortcut_name_variants(shortcut_name))
         
         print("🔧 Removing shortcuts...")
         
         # Get shortcut locations
         desktop_path = Path.home() / "Desktop"
+        removed = False
         
         if sys.platform == "win32":
             try:
@@ -155,10 +184,7 @@ def remove_shortcuts():
             except AttributeError:
                 startmenu_path = Path.home() / "AppData" / "Roaming" / "Microsoft" / "Windows" / "Start Menu" / "Programs"
             
-            shortcuts = [
-                desktop_path / f"{shortcut_name}.lnk",
-                startmenu_path / f"{shortcut_name}.lnk",
-            ]
+            shortcuts = []
             
             for sanitized_name in sanitized_names:
                 shortcuts.extend([
@@ -166,17 +192,15 @@ def remove_shortcuts():
                     startmenu_path / f"{sanitized_name}.lnk"
                 ])
             
-            # Also remove the batch launcher
-            batch_file = Path.home() / ".jetstream" / "launch_jetstream.bat"
-            if batch_file.exists():
-                batch_file.unlink()
-                print(f"   ✓ Removed launcher: {batch_file}")
+            for shortcut in SHORTCUTS:
+                batch_file = Path.home() / ".jetstream" / f"{shortcut['launcher']}.bat"
+                if batch_file.exists():
+                    batch_file.unlink()
+                    print(f"   ✓ Removed launcher: {batch_file}")
+                    removed = True
                 
         elif sys.platform == "darwin":
-            shortcuts = [
-                desktop_path / f"{shortcut_name}.app",
-                Path.home() / "Applications" / f"{shortcut_name}.app",
-            ]
+            shortcuts = []
             
             for sanitized_name in sanitized_names:
                 shortcuts.extend([
@@ -184,16 +208,15 @@ def remove_shortcuts():
                     Path.home() / "Applications" / f"{sanitized_name}.app"
                 ])
             
-            script_file = Path.home() / ".jetstream" / "launch_jetstream.sh"
-            if script_file.exists():
-                script_file.unlink()
-                print(f"   ✓ Removed launcher: {script_file}")
+            for shortcut in SHORTCUTS:
+                script_file = Path.home() / ".jetstream" / f"{shortcut['launcher']}.sh"
+                if script_file.exists():
+                    script_file.unlink()
+                    print(f"   ✓ Removed launcher: {script_file}")
+                    removed = True
                 
         else:  # Linux
-            shortcuts = [
-                desktop_path / f"{shortcut_name}.desktop",
-                Path.home() / ".local" / "share" / "applications" / f"{shortcut_name}.desktop"
-            ]
+            shortcuts = []
             
             for sanitized_name in sanitized_names:
                 shortcuts.extend([
@@ -201,12 +224,13 @@ def remove_shortcuts():
                     Path.home() / ".local" / "share" / "applications" / f"{sanitized_name}.desktop"
                 ])
             
-            script_file = Path.home() / ".jetstream" / "launch_jetstream.sh"
-            if script_file.exists():
-                script_file.unlink()
-                print(f"   ✓ Removed launcher: {script_file}")
+            for shortcut in SHORTCUTS:
+                script_file = Path.home() / ".jetstream" / f"{shortcut['launcher']}.sh"
+                if script_file.exists():
+                    script_file.unlink()
+                    print(f"   ✓ Removed launcher: {script_file}")
+                    removed = True
         
-        removed = False
         for shortcut in shortcuts:
             if shortcut.exists():
                 try:

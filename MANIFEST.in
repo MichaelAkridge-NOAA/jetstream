@@ -3,8 +3,8 @@ include README.md
 include LICENSE.md
 include requirements.txt
 
-# Include static web files from package
-recursive-include jetstream/static *.html *.css *.js
+# Include static web files and shortcut icons from package
+recursive-include jetstream/static *.html *.css *.js *.ico *.png
 
 # Include logs directory structure (empty)
 recursive-include logs .gitkeep
